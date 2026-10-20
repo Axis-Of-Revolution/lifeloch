@@ -1,0 +1,13 @@
+{
+  "name": "lifeloch-qa",
+  "version": "0.10.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:demo": "node tools/test_v10_demo.cjs",
+    "test:render": "node tools/test_v10_demo.cjs --render"
+  },
+  "devDependencies": {
+    "sharp": "0.35.5"
+  }
+}

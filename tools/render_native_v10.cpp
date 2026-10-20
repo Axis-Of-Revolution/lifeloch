@@ -1,0 +1,25 @@
+// Host render snapshots of native source, not a 3DS emulator.
+#include "ui.hpp"
+#include "pixel.hpp"
+#include "layout.hpp"
+#include <fstream>
+#include <sstream>
+using namespace deck;
+std::string artwork(){std::ifstream f("assets/home.png",std::ios::binary);std::vector<unsigned char>b((std::istreambuf_iterator<char>(f)),{});const char*abc="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";std::string out;unsigned bits=0,value=0;for(auto c:b){value=(value<<8)|c;bits+=8;while(bits>=6){bits-=6;out+=abc[(value>>bits)&63];}}if(bits)out+=abc[(value<<(6-bits))&63];while(out.size()%4)out+='=';return out;}
+struct Svg:Renderer{int n=0;std::ostringstream images[2];void screen(int s)override{n=s;}void homeArtwork(Rect a)override{images[n]<<"<image href=\"data:image/png;base64,"<<artwork()<<"\" x=\""<<a.x<<"\" y=\""<<a.y<<"\" width=\""<<a.w<<"\" height=\""<<a.h<<"\"/>";}
+ void box(Rect r,Color c,float=0)override{char color[10];snprintf(color,sizeof(color),"#%06x",c);images[n]<<"<rect x=\""<<r.x<<"\" y=\""<<r.y<<"\" width=\""<<r.w<<"\" height=\""<<r.h<<"\" fill=\""<<color<<"\"/>";}
+ void text(const std::string&s,float x,float y,float size,Color c,Align a,float w)override{pixelText(*this,s,x,y,size,c,a,w);}
+ void save(std::string name,int which){std::ofstream out("qa/native-v10-"+name+".svg");out<<"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\""<<(which?960:1200)<<"\" height=\"720\" viewBox=\"0 0 "<<(which?320:400)<<" 240\">"<<images[which].str()<<"</svg>";}
+};
+void shot(App&a,std::string name,int which){Svg r;a.render(r);r.save(name,which);}
+int main(){App a;a.tick(1000);shot(a,"home-top",0);shot(a,"home-bottom",1);a.dispatch({Action::NewGame});shot(a,"setup",1);a.dispatch({Action::Theme});shot(a,"theme",1);a.dispatch({Action::Back});a.dispatch({Action::Options});shot(a,"options",1);a.dispatch({Action::Back});a.dispatch({Action::Players});shot(a,"layouts-setup",1);a.dispatch({Action::Back});a.dispatch({Action::Seats});shot(a,"seats",1);a.dispatch({Action::Back});a.dispatch({Action::Presets});shot(a,"presets",1);a.dispatch({Action::Back});a.dispatch({Action::Begin});auto&g=a.model.state.game;
+for(auto action:{Action::Menu,Action::Clock,Action::GameTrackers,Action::GameLayout,Action::Profiles,Action::ManageProfiles,Action::Help,Action::Float}){a.dispatch({action});shot(a,"menu-"+std::to_string(int(action)),1);}
+a.page=Page::Game;g.config.players=2;chooseLayout(g.config,0);for(int i=0;i<16;i++)g.history.push_back({0,0,40,39,-1,0,static_cast<uint32_t>(i)});g.players[0].life=40;g.players[1].life=9;a.tick(1500);shot(a,"history-expanded",0);
+a.selected=0;g.players[0].life=9;a.tick(1600);shot(a,"life-0",0);for(int t:{50,100,150,200,300,400}){a.tick(1600+t);shot(a,"life-"+std::to_string(t),0);}g.players[0].poison=10;shot(a,"poison",0);
+a.page=Page::Clock;shot(a,"combined-settings",1);
+a.page=Page::Game;g.config.players=6;g.config.commander=g.config.partners=true;chooseLayout(g.config,0);for(int i=0;i<6;i++){g.players[i].life=i?40:10;g.players[i].poison=g.players[i].energy=g.players[i].experience=0;for(int j=0;j<6;j++)g.players[i].damage[j]={j,j+1};}a.model.addProfile("Moonlit Mage");a.model.assignActive(0,6);a.model.colorProfile(6,4);a.tick(5000);shot(a,"profiles-critical-first",0);a.tick(5500);shot(a,"profiles-critical",0);g.players[0].damage[2][1]=21;shot(a,"commander-death",0);
+g.history.clear();for(int i=0;i<6;i++)for(int j=0;j<9;j++)g.history.push_back({i,i,40,40-j,-1,0,static_cast<uint32_t>(j)});a.page=Page::History;shot(a,"history-six",1);a.dispatch({Action::SelectPlayer,0});shot(a,"history-player",1);
+a.page=Page::Game;g.config.commander=false;for(auto pair:{std::pair<int,int>{4,2},{6,2},{6,3}})for(int layout=0;layout<2;layout++){g.config.players=pair.first;g.config.heads=pair.second;chooseLayout(g.config,layout);shot(a,"teams-"+std::to_string(pair.first)+"-"+std::to_string(pair.second)+"-"+std::to_string(layout),0);shot(a,"teams-controls-"+std::to_string(pair.first)+"-"+std::to_string(pair.second),1);}
+a.page=Page::Game;g.config={2,40,true,true,true};chooseLayout(g.config,0);a.model.renameProfile(6,"Alan");a.model.colorProfile(6,1);for(int i=0;i<6;++i){g.players[i].life=40;g.players[i].poison=4;g.players[i].energy=7;g.players[i].experience=9;g.players[i].damage={};}g.players[0].damage[1]={3,2};g.history={{0,0,40,35,-1,0,1},{0,0,0,3,-1,0,2,HistoryKind::Poison},{0,0,35,40,-1,0,3},{0,0,3,2,-1,0,4,HistoryKind::Poison}};a.tick(12000);shot(a,"mixed-history-upper",0);a.tick(12500);shot(a,"mixed-history-upper",0);a.dispatch({Action::History});shot(a,"mixed-history-all",1);a.dispatch({Action::SelectPlayer,0});shot(a,"mixed-history-player",1);a.page=Page::Game;a.tab=2;a.dispatch({Action::Change,1,int(Counter::Poison)});shot(a,"counter-feedback",1);
+for(int sides:{2,4,6,8,10,12,20}){a.page=Page::Dice;uint64_t start=20000+sides*10000;a.tick(start);a.dispatch({Action::Die,sides});a.dispatch({Action::Roll});for(int t:{0,200,450,800,1200,1800,2400,3000}){a.tick(start+t);shot(a,"dice-"+std::to_string(sides)+"-"+std::to_string(t),0);}shot(a,"dice-controls",1);}
+}

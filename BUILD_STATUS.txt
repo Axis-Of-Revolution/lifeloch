@@ -1,0 +1,34 @@
+LIFELOCH v0.10.0 — SOURCE AND INTERACTIVE DEMO
+
+CIA: NOT BUILT. No native executable is included.
+Native SDK, cross-compiler and packaging tools are unavailable.
+
+VERIFIED
+- Uniform outlined initials; overlapping team-divider joins
+- Reversing life inputs and poison inputs batch as net changes, with purple poison history
+- Small thud / critical sword PCM, poison sound thresholds, touch/key button flashes
+- Bidirectional yaw wakes all seven settled bodies; leveling/stopping permits re-settling
+- Native host arithmetic, persistence, themes, sound and layout regressions
+- Controller focus across all enabled menu operations, including duplicate Back targets
+- Live partners/commander toggles, fixed-count layout changes and profile assignment
+- Immediate life arithmetic with rolling display; two-digit minimum sizing
+- Team defeat from one lethal commander; 10 poison individually / 15 in either Giant mode
+- Upper history without heading; larger centered arrows; bounded lower history
+- Profile creation color selection and saved-profile propagation through undo/save
+- All live settings on one screen; all-five-color new-game default
+- Team dividers for each 4/6-player Giant layout and grouped lower player controls
+- Dice label fit, changing silhouette shadows, post-settle tilt and re-settling
+- Browser click/key logic in a Node VM; 248 layout/density cases
+- 840 native rigid-body rolls: max 2.13s; 20 cocked landings correctly withheld a result
+- Tilt changes the trajectory and can change the result of an identical launch
+- Save format 8 roundtrip and legacy fixture migration
+- Native and demo screen renders, home art, 16 layouts and physical roll frames
+- ZIP integrity and standalone demo/source identity
+
+PENDING
+- Actual browser-engine interaction and performance
+- 3DS compilation, install, GPU texture, accelerometer/gyroscope axes and feel, audio, keyboard,
+  SD persistence, suspend/resume and performance tests
+
+
+Current home text and supplied artwork replace the old placeholders.

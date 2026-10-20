@@ -1,0 +1,16 @@
+# Nintendo 3DS / host build outputs
+build/
+*.o
+*.elf
+*.3dsx
+*.cia
+*.smdh
+*.3ds
+*.map
+
+# Local dependencies and caches
+node_modules/
+.cache/
+.DS_Store
+__pycache__/
+*.pyc
