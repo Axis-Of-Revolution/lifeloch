@@ -52,7 +52,7 @@ int main(){
         pixelText(glyph,std::to_string(n),20+(n>=0&&n<10?13*28.f/22:0),20,28,0xffffff,Align::Left,200);
         lifeText(styled,n,20,20,28,0xffffff,Align::Left,200,1000,20,true);
         lifeText(plain,n,20,20,28,0xffffff,Align::Left,200,1000,20,false);
-        assert(!glyph.pixels.empty());assert(plain.pixels==glyph.pixels);
+        assert(!glyph.pixels.empty());assert(plain.pixels!=glyph.pixels);assert(plain.pixels.size()>glyph.pixels.size());
         if(n<=0){assert(styled.pixels.size()>glyph.pixels.size());assert(styled.pixels!=plain.pixels);}
         else if(n<=20){assert(styled.pixels!=plain.pixels);}
         else assert(styled.pixels==plain.pixels);

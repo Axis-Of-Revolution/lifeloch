@@ -1,8 +1,16 @@
-# Lifeloch — v0.10.2
+# Lifeloch — v0.10.3
 
 Native Nintendo 3DS game tracker with a standalone offline browser demo. The dark medieval serif interface, raster numerals, WUBRG themes, and existing player layouts remain the visual baseline.
 
 Open `dist/Lifeloch-v0.10-Demo.html`. It contains its artwork, font, audio synthesis, and scripts; no server or external assets are needed. It is a separate browser implementation, not a 3DS emulator. Existing browser saves retain their storage key.
+
+## v0.10.3 refinements
+
+- Main life-total numerals now have a crisp dark silhouette, subtle offset drop shadow, and shallow serif edge depth like the HOME LIFELOCH title. Defeated life totals use a lighter grey-blue to remain legible above the waving skull-and-crossbones without losing the subdued appearance.
+- **Game history** is now a single oldest-first event table in both All and individual views. The optional **Turn #** column is shown only when turn tracking is enabled, and older events without associated turn metadata display `?`. The table has a right-edge scrollbar and supports direct touch dragging, scroll-wheel input in the browser, D-pad controls, and compact pixel-arrow buttons in place of Newer/Older. The reclaimed space adds **Redo** alongside Undo and Menu.
+- The upper display's life-change history column no longer has a vertical divider; it remains visually separate because of spacing and text styling, with no commander-border seam to manage.
+- Theme colors slowly orbit their center on a 125-second cycle while subtle low-amplitude sine waves move blending boundaries. The browser updates cached color tiles at 750-ms intervals and the native renderer caches orbital geometry to minimize CPU overhead.
+- The original algorithmically pixelated HOME art receives a subtle horizontal ripple (1.25 pixel amplitude, 18-second cycle). Native uses narrow UV texture bands; the standalone browser uses the same cropped strips. The underlying original artwork remains unchanged; no generated imagery is used.
 
 ## v0.10.2 refinements
 

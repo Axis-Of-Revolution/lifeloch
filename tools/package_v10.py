@@ -11,7 +11,7 @@ for name in ['build_demo.sh','sync_demo_atlas.py','demo-v10.html','dice-tray.js'
  files.append(root/'tools'/name)
 files=sorted(files)
 checksums=''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+str(p.relative_to(root))+'\n' for p in files)
-output=release/'Lifeloch-v0.10.2-Source-and-Demo.zip'
+output=release/'Lifeloch-v0.10.3-Source-and-Demo.zip'
 with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED) as z:
  for p in files:z.write(p,'Lifeloch/'+str(p.relative_to(root)))
  z.writestr('Lifeloch/SHA256SUMS.txt',checksums)
@@ -19,5 +19,5 @@ with zipfile.ZipFile(output) as z:
  assert z.testzip() is None
  assert not any(n.endswith(('.cia','.3dsx','.elf','.bnr')) for n in z.namelist())
  assert z.read('Lifeloch/dist/Lifeloch-v0.10-Demo.html')==(root/'tools/demo-v10.html').read_bytes()
-shutil.copy2(root/'dist/Lifeloch-v0.10-Demo.html',release/'Lifeloch-Demo-v0.10.2.html')
+shutil.copy2(root/'dist/Lifeloch-v0.10-Demo.html',release/'Lifeloch-Demo-v0.10.3.html')
 print(output.name,output.stat().st_size,'bytes;',len(files),'files; ZIP integrity and standalone demo identity verified.')

@@ -1,9 +1,13 @@
-LIFELOCH v0.10.2 — SOURCE AND INTERACTIVE DEMO
+LIFELOCH v0.10.3 — SOURCE AND INTERACTIVE DEMO
 
 CIA: NOT BUILT. No native executable is included.
 Native SDK, cross-compiler and packaging tools are unavailable.
 
 VERIFIED
+- Oldest-first history tables with conditional Turn #/? column, touch drag, wheel and pixel arrow buttons, Undo/Redo
+- Drop shadow and thin outline on native/demo life totals, lighter defeated-life ink
+- Animated WUBRG theme orbit/wavering boundaries with cached native/browser sampling
+- Periodic 18-second scanline ripple on original pixelated home artwork
 - Four-player commander/history/counter band alignment; square-cell flame loop and critical threshold
 - Game history turn separators, with version 9 persistent event metadata and old-save migration
 - Algorithmic 200x120-to-400x240 nearest-neighbor home artwork pixelation
@@ -33,7 +37,10 @@ VERIFIED
 - ZIP integrity and standalone demo/source identity
 
 PENDING
-- Actual browser-engine interaction and performance
+- Nintendo 3DS hardware build and performance profiling; actual console audiovisual parity
+
+BROWSER VERIFIED
+- Headless Chromium rendered 4-player game and chronological history page; browser logic suite passed.
 - 3DS compilation, install, GPU texture, accelerometer/gyroscope axes and feel, audio, keyboard,
   SD persistence, suspend/resume and performance tests
 

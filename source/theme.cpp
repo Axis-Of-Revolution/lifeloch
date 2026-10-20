@@ -1,6 +1,7 @@
 #include "theme.hpp"
 #include "pixel.hpp"
 #include <algorithm>
+#include <array>
 #include <cmath>
 namespace deck {
 namespace {
@@ -17,15 +18,57 @@ std::vector<ThemePoint> themePoints(int mask,float aspect){
         out.push_back({x,y,colors[i]});
     }return out;
 }
-Color themeSample(int mask,float x,float y,float aspect){
-    static int lastMask=-1;static float lastAspect=0;static std::vector<ThemePoint> points;if(lastMask!=mask||lastAspect!=aspect){points=themePoints(mask,aspect);lastMask=mask;lastAspect=aspect;}if(points.empty())return magicColor(4);
-    if(points.size()==1)return magicColor(points[0].color);
-    if(points.size()==2)return mix(magicColor(points[0].color),magicColor(points[1].color),std::clamp(x,0.0f,1.0f));
+Color themeSample(int mask,float x,float y,float aspect,uint64_t time){
+    // Many small raster glyphs sample the same theme every frame. Cache the
+    // slow orbit and 1D wave terms; interpolate the precomputed wave at the
+    // sample location. This keeps the 3DS CPU workload essentially static.
+    struct MotionPoint {float x,y,weight;Color color;};
+    struct Cache {
+        int mask=-1,count=0;
+        uint64_t time=0;
+        float aspect=0;
+        std::array<MotionPoint,5> points{};
+        std::array<float,129> waveX{},waveY{};
+    };
+    static Cache cache;
+    if(cache.mask!=mask||cache.time!=time||cache.aspect!=aspect){
+        cache.mask=mask;cache.time=time;cache.aspect=aspect;
+        auto base=themePoints(mask,aspect);
+        cache.count=static_cast<int>(base.size());
+        constexpr float tau=6.28318530718f;
+        float phase=tau*float(time%125000)/125000.f;
+        float cs=std::cos(phase),sn=std::sin(phase);
+        for(int j=0;j<cache.count;++j){
+            const auto& pt=base[j];float ox=(pt.x-.5f)*aspect,oy=pt.y-.5f;
+            cache.points[j]={ox*cs-oy*sn,ox*sn+oy*cs,
+                1.f+.06f*sn*std::sin(phase*2.f+pt.color*1.8f+.23f*phase),magicColor(pt.color)};
+        }
+        for(int i=0;i<=128;++i){
+            float u=float(i)/128.f;
+            cache.waveX[i]=.018f*sn*std::sin(tau*(u*1.4f)+phase*1.6f);
+            cache.waveY[i]=.015f*sn*std::sin(tau*(u*1.7f)-phase*1.1f);
+        }
+    }
+    if(!cache.count)return magicColor(4);
+    if(cache.count==1)return cache.points[0].color;
+    auto interpolate=[&](const std::array<float,129>& a,float u){
+        float scaled=std::clamp(u*128.f,0.f,128.f);
+        int at=std::min(static_cast<int>(scaled),127);
+        float blend=scaled-at;return a[at]*(1.f-blend)+a[at+1]*blend;
+    };
+    float px=(x-.5f)*aspect+interpolate(cache.waveX,y);
+    float py=y-.5f+interpolate(cache.waveY,x);
     float total=0,red=0,green=0,blue=0;
-    for(auto p:points){float dx=(x-p.x)*aspect,dy=y-p.y,d=dx*dx+dy*dy;
-        if(d<.000001f)return magicColor(p.color);
-        float weight=1/(d*d);Color c=magicColor(p.color);total+=weight;red+=((c>>16)&255)*weight;green+=((c>>8)&255)*weight;blue+=(c&255)*weight;
-    }return (static_cast<Color>(red/total)<<16)|(static_cast<Color>(green/total)<<8)|static_cast<Color>(blue/total);
+    for(int j=0;j<cache.count;++j){
+        const auto& point=cache.points[j];
+        float dx=px-point.x,dy=py-point.y;
+        float d=dx*dx+dy*dy;
+        if(d<.0000001f)return point.color;
+        d=std::max(.00001f,d/point.weight);
+        float w=1.f/(d*d);Color c=point.color;
+        total+=w;red+=((c>>16)&255)*w;green+=((c>>8)&255)*w;blue+=(c&255)*w;
+    }
+    return (static_cast<Color>(red/total)<<16)|(static_cast<Color>(green/total)<<8)|static_cast<Color>(blue/total);
 }
 void Renderer::gradient(Rect r,Color tl,Color tr,Color bl,Color br){
     // Portable fallback; native and browser adapters draw interpolated quads.
@@ -34,7 +77,7 @@ void Renderer::gradient(Rect r,Color tl,Color tr,Color bl,Color br){
 }
 Color ThemeRenderer::contrast(Color c,float x,float y)const{
     if(c!=0xf0f2df&&c!=0xa4b6af&&c!=0x82d8a2&&c!=0xfa9d8d&&c!=0xc48cf1&&c!=0xffda58&&c!=0xc8d0dc&&!(c==0xc5dc9b&&textMode))return c;
-    Color sample=themeSample(mask,x/width,y/240,width/240);
+    Color sample=themeSample(mask,x/width,y/240,width/240,now);
     // Relative luminance is evaluated on the actual panel color.
     Color surface=mix(0x0a1218,sample,.30f);float luminance=0;
     const float weights[]={.2126f,.7152f,.0722f};int k=0;
@@ -71,7 +114,7 @@ void ThemeRenderer::box(Rect r,Color c,float radius){
     case 0xc5dc9b:strength=.68f;base=0xeeeece;break;
     default:target.box(r,c,radius);return;
     }
-    auto sample=[&](float x,float y){return mix(base,themeSample(mask,x/width,y/240,width/240),strength);};
+    auto sample=[&](float x,float y){return mix(base,themeSample(mask,x/width,y/240,width/240,now),strength);};
     for(float y=r.y;y<r.y+r.h;y+=32)for(float x=r.x;x<r.x+r.w;x+=32){float w=std::min(32.0f,r.x+r.w-x),h=std::min(32.0f,r.y+r.h-y);
         target.gradient({x,y,w,h},sample(x,y),sample(x+w,y),sample(x,y+h),sample(x+w,y+h));}
 }

@@ -64,8 +64,8 @@ int main(){
   replace.dispatch({Action::NewGame});assert(replace.modalOpen());replace.dispatch({Action::Cancel});assert(replace.model.state.game==old);
   replace.dispatch({Action::NewGame});replace.dispatch({Action::Confirm});assert(!replace.modalOpen()&&replace.page==Page::Rules);
   replace.dispatch({Action::Begin});assert(!replace.modalOpen()&&replace.page==Page::Game&&replace.model.state.game.history.empty());}
- // Events retain the actual turn number, including after serialization, and
- // both history modes render a separator when the turn counter is enabled.
+ // Events retain the actual turn number, including after serialization;
+ // all and single history views show the chronological Turn # table.
  {App timeline;timeline.model.state.setup.turnEnabled=true;assert(timeline.model.start());
   timeline.page=Page::Game;auto& gg=timeline.model.state.game;
   assert(timeline.model.change(0,Counter::Life,-2));
@@ -76,11 +76,14 @@ int main(){
   State restored;uint32_t seq=0;assert(decode(encode(timeline.model.state),restored,seq));
   assert(restored.game.history[0].turn==0&&restored.game.history[1].turn==1);
   timeline.dispatch({Action::History});Capture all;timeline.render(all);
-  assert(all.has("Game history")&&all.has("TURN 1")&&all.has("TURN 0"));
+  assert(all.has("Game history")&&all.has("Turn #")&&all.has("0")&&all.has("1"));
+  auto yFor=[&](const Capture& c,const std::string& v){for(auto w:c.words)if(w.n==1&&w.text==v&&w.x==68)return w.y;return -1.f;};
+  assert(yFor(all,"0")<yFor(all,"1")&&yFor(all,"0")>0);
   timeline.dispatch({Action::SelectPlayer,0});Capture single;timeline.render(single);
-  assert(single.has("TURN 1")&&single.has("TURN 0"));
+  assert(single.has("Turn #")&&yFor(single,"0")<yFor(single,"1"));
   gg.config.turnEnabled=false;Capture hidden;timeline.render(hidden);
-  assert(!hidden.has("TURN 1")&&!hidden.has("TURN 0"));
+  assert(!hidden.has("Turn #"));
+  assert(std::any_of(timeline.buttons.begin(),timeline.buttons.end(),[](auto b){return b.command.action==Action::Redo;}));
  }
  // Loop boundary is exact in native flame rasterization (every 2400 ms).
  {Capture a,b;lifeText(a,10,6,24,30,0xffed98,Align::Left,165,0,20,true,false,10,false,40);
@@ -96,7 +99,7 @@ int main(){
  App profiles;profiles.dispatch({Action::NewGame});assert(profiles.model.state.setup.themeColors==31);profiles.dispatch({Action::Players});profiles.dispatch({Action::PlayerCount,3});assert(profiles.model.state.setup.commander&&profiles.model.state.setup.life==40);profiles.dispatch({Action::PlayerCount,2});assert(!profiles.model.state.setup.commander&&profiles.model.state.setup.life==20);profiles.dispatch({Action::Seats});profiles.dispatch({Action::PickSeat,0});profiles.dispatch({Action::NewProfile});profiles.submitText("Zara",true);assert(profiles.page==Page::Profile&&profiles.model.state.seats[0]==-1);profiles.dispatch({Action::Color,7});profiles.dispatch({Action::ProfileDone});assert(profiles.page==Page::Seats&&profiles.model.state.seats[0]==6);profiles.dispatch({Action::Begin});auto& pg=profiles.model.state.game;assert(pg.players[0].profileIndex==6&&pg.players[0].color==7);profiles.model.change(0,Counter::Life,-3);assert(profiles.model.renameProfile(6,"Zelda")&&profiles.model.colorProfile(6,1));assert(pg.players[0].name=="Zelda"&&pg.players[0].color==1);profiles.model.undo();assert(pg.players[0].name=="Zelda"&&pg.players[0].color==1);profiles.model.redo();assert(pg.players[0].profileIndex==6);State persisted;uint32_t seq;assert(decode(encode(profiles.model.state),persisted,seq)&&persisted.game.players[0].profileIndex==6);auto oldV6=encode(profiles.model.state);oldV6.resize(oldV6.size()-24-8*profiles.model.state.game.history.size());auto put=[&](int offset,uint32_t value){for(int i=0;i<4;++i)oldV6[offset+i]=(value>>(i*8))&255;};put(8,6);put(16,oldV6.size()-24);put(20,0);uint32_t checksum=0xffffffff;for(auto byte:oldV6){checksum^=byte;for(int i=0;i<8;++i)checksum=(checksum>>1)^(0xedb88320u&(0u-(checksum&1)));}put(20,~checksum);assert(decode(oldV6,persisted,seq));assert(persisted.game.players[0].profileIndex==6);
  profiles.model.addProfile("Second");profiles.model.assignActive(1,7);profiles.model.deleteProfile(6);assert(pg.players[1].profileIndex==6);profiles.model.renameProfile(6,"Second updated");assert(pg.players[1].name=="Second updated");assert(pg.players[0].profileIndex==-1&&pg.players[0].name=="Zelda");profiles.model.undo();assert(pg.players[0].profileIndex==-1);
  profiles.dispatch({Action::Clock});render(profiles);for(auto action:{Action::Commander,Action::Partners,Action::TurnToggle,Action::TimerToggle,Action::ClockToggle})assert(std::any_of(profiles.buttons.begin(),profiles.buttons.end(),[&](const auto& b){return b.command.action==action;}));assert(std::none_of(profiles.buttons.begin(),profiles.buttons.end(),[](const auto&b){return b.command.action==Action::GameTrackers;}));bool clock=pg.config.clockEnabled;profiles.dispatch({Action::ClockToggle});assert(pg.config.clockEnabled!=clock);
- pg.config.commander=pg.config.partners=true;pg.players[0].life=40;pg.players[0].damage[1]={20,20};assert(!profiles.model.atThreshold(0));pg.players[0].damage[1][1]=21;assert(profiles.model.atThreshold(0));pg.config.partners=false;assert(!profiles.model.atThreshold(0));pg.players[0].damage[1][0]=21;assert(profiles.model.atThreshold(0));profiles.page=Page::Game;Capture death;profiles.render(death);assert(std::any_of(death.upper.begin(),death.upper.end(),[](auto box){return box.second==0x777b82;}));
+ pg.config.commander=pg.config.partners=true;pg.players[0].life=40;pg.players[0].damage[1]={20,20};assert(!profiles.model.atThreshold(0));pg.players[0].damage[1][1]=21;assert(profiles.model.atThreshold(0));pg.config.partners=false;assert(!profiles.model.atThreshold(0));pg.players[0].damage[1][0]=21;assert(profiles.model.atThreshold(0));profiles.page=Page::Game;Capture death;profiles.render(death);assert(std::any_of(death.upper.begin(),death.upper.end(),[](auto box){return box.second==0xb8c3cb;}));
  // A large deliberate tilt must move a settled body; leveling must let it settle again.
  for(int sides:{2,4,6,8,10,12,20}){RollSimulation body;body.start(sides,987654);body.advance(4);assert(body.pose().settled);auto p=body.pose().position;body.advance(.5f,.65f,.2f);auto moved=body.pose().position;assert(std::hypot(moved.x-p.x,moved.y-p.y)>.05f);body.advance(4);assert(body.pose().settled);if(body.pose().result)assert(body.pose().result==body.faceUp());}
  assert(pixelAdvance("1→2")==39);

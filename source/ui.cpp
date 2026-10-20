@@ -77,7 +77,7 @@ void App::syncLifeMotion(){
 void App::render(Renderer& r){
     syncLifeMotion();
     bool configuring=page==Page::Rules||page==Page::Seats||(page==Page::Layout&&!editingGameLayout)||page==Page::Options||page==Page::Presets||(page==Page::Theme&&themeReturn==Page::Rules);
-    ThemeRenderer themed(r,configuring?model.state.setup.themeColors:model.state.themeColors);
+    ThemeRenderer themed(r,configuring?model.state.setup.themeColors:model.state.themeColors,now);
     draw=&themed;buttons.clear();
     p=Palette{0x101b1c,0x19292a,0x263a3b,0xf0f2df,0xa4b6af,0x3b5350,0xc5dc9b,0x17251e,0x82d8a2,0xfa9d8d};
     viewport=400;themed.screen(0);themed.box({0,0,400,240},p.bg);top();
@@ -183,7 +183,7 @@ void App::board(const Game& g,bool preview){
         if(!preview&&count)miniHistory(i/g.config.heads,historyX+4,24,w-historyX-9,count,spacing,historyFont);
         }
         if(g.config.commander)damageRow(g,i,sideDamage?Rect{historyX,commandY,w-historyX-6,commandH}:Rect{6,commandY,commandW,commandH});
-        if(!sideDamage)draw->box({historyX,24,1,std::max(1.0f,historyBottom-24)},0x607c80);
+        // The history column reads clearly without an additional dividing line.
         lifeText(*draw,g.players[i].life,6,lifeY,lifeSize,(!preview&&model.atThreshold(i))?p.bad:p.ink,Align::Left,lifeW,now,g.config.life/2,!preview,!preview&&model.atThreshold(i),shown,!preview&&lifeMotion[i].from>lifeMotion[i].target,g.config.life);
         float badgeW=(historyX-6)/std::max(1,badges);int at=0;
         for(int j=0;j<3;++j)if(values[j]){label(std::string(codes[j])+number(values[j]),6+at*badgeW,badgeY,9.0f,colors[j],Align::Left,badgeW-3);++at;}
@@ -227,68 +227,65 @@ void App::footer(){
 }
 
 namespace {
-struct HistoryDisplayRow{const LifeEvent* event=nullptr;int turn=-1;};
-std::vector<HistoryDisplayRow> historyRows(const Game& g,int team){
-    std::vector<HistoryDisplayRow> rows;int previous=-2;
-    for(auto it=g.history.rbegin();it!=g.history.rend();++it){
-        if(it->team!=team)continue;
-        if(g.config.turnEnabled&&it->turn!=previous){rows.push_back({nullptr,it->turn});previous=it->turn;}
-        rows.push_back({&*it,-1});
-    }
-    return rows;
+// History is stored in chronological order. Keep that order in both views;
+// the All tab presents one timeline rather than parallel player timelines.
+std::vector<const LifeEvent*> historyRows(const Game& g,int team){
+    std::vector<const LifeEvent*> result;
+    for(const auto& e:g.history)if(team<0||e.team==team)result.push_back(&e);
+    return result;
 }
-std::string turnDivider(int turn){return turn<0?"EARLIER TURNS":"TURN "+number(turn);}
 }
 int App::maxHistoryOffset()const{
-    const auto& g=model.state.game;int rows=0;
-    if(historyAll){for(int i=0;i<g.config.players;i+=g.config.heads)rows=std::max(rows,int(historyRows(g,i/g.config.heads).size()));}
-    else rows=static_cast<int>(historyRows(g,selected/g.config.heads).size());
-    return std::max(0,rows-5);
+    const auto& g=model.state.game;
+    int count=static_cast<int>(historyRows(g,historyAll?-1:selected/g.config.heads).size());
+    return std::max(0,count-5);
 }
 void App::scrollHistory(float pixels){
     if(page!=Page::History||input.kind!=InputKind::None||modalOpen())return;
-    scrollRemainder+=pixels;int rows=static_cast<int>(scrollRemainder/18);
-    if(rows){historyPage=std::clamp(historyPage+rows,0,maxHistoryOffset());scrollRemainder-=rows*18;}
+    scrollRemainder+=pixels;
+    int rows=static_cast<int>(scrollRemainder/23);
+    if(rows){historyPage=std::clamp(historyPage+rows,0,maxHistoryOffset());scrollRemainder-=rows*23;}
 }
 void App::historyView(){
     const auto& g=model.state.game;header("Game history");
     button({12,41,42,25},"All",{Action::HistoryAll},historyAll,true,false,11);
     float width=(248.0f-(g.config.players-1)*4)/g.config.players;
     for(int i=0;i<g.config.players;++i)button({60+i*(width+4),41,width,25},playerAbbreviation(g.players[i],i),{Action::SelectPlayer,i},!historyAll&&selected==i,true,false,11);
+    auto rows=historyRows(g,historyAll?-1:selected/g.config.heads);
     historyPage=std::clamp(historyPage,0,maxHistoryOffset());
-    if(historyAll){
-        float colWidth=296.0f/g.config.players;
-        for(int i=0;i<g.config.players;++i){float x=12+i*colWidth;auto rows=historyRows(g,i/g.config.heads);
-            identityText(playerAbbreviation(g.players[i],i),x+colWidth/2,75,9,g.players[i],Align::Center,colWidth-6);
-            draw->box({x+2,86,colWidth-4,1},p.line);
-            for(int row=0;row<5;++row){int index=historyPage+row;float y=91+row*23.0f;
-                draw->box({x+2,111+row*23.0f,colWidth-4,.5f},p.line);
-                if(index>=static_cast<int>(rows.size()))continue;
-                auto r=rows[index];
-                if(!r.event){draw->box({x+2,y,colWidth-4,19},p.raised);label(turnDivider(r.turn),x+colWidth/2,y+5,8,p.accent,Align::Center,colWidth-6);continue;}
-                const auto& e=*r.event;
-                label((e.kind==HistoryKind::Poison?"P ":"")+signedNumber(e.after-e.before)+"→"+number(e.after),x+colWidth/2,y+3,11,e.kind==HistoryKind::Poison?0xc48cf1:e.after>e.before?p.good:p.bad,Align::Center,colWidth-6);
-            }
-            if(rows.empty())label("--",x+colWidth/2,102,11,p.muted,Align::Center,colWidth-8);
-        }
-    }else{
-        auto rows=historyRows(g,selected/g.config.heads);identityText(g.players[selected].name,12,75,11,g.players[selected],Align::Left,180);label("Latest first",302,75,9,p.muted,Align::Right,100);
-        for(int row=0;row<5;++row){int index=historyPage+row;if(index>=static_cast<int>(rows.size()))break;
-            float y=91+row*23.0f;auto r=rows[index];
-            if(!r.event){draw->box({12,y,290,20},p.raised);label(turnDivider(r.turn),16,y+4,10,p.accent);draw->box({12,y+20,290,1},p.line);continue;}
-            const auto& e=*r.event;
-            label((e.kind==HistoryKind::Poison?"P ":"")+signedNumber(e.after-e.before)+"→"+number(e.after),14,y,16,e.kind==HistoryKind::Poison?0xc48cf1:e.after>e.before?p.good:p.bad,Align::Left,174);
-            label(e.kind==HistoryKind::Poison?"Poison":e.source>=0?playerAbbreviation(g.players[e.source],e.source)+" CMD "+(e.slot?"B":"A"):"Life",300,y+2,10,p.muted,Align::Right,94);
-            draw->box({12,y+20,290,1},p.line);
-        }
-        if(rows.empty())label("No life or poison changes yet.",160,122,14,p.muted,Align::Center,280);
+    // Four columns when turn tracking is on; otherwise reclaim its full width.
+    float playerX=15,turnX=68,changeX=g.config.turnEnabled?128:112,detailX=299;
+    label("Player",playerX,75,9,p.accent,Align::Left,49);
+    if(g.config.turnEnabled)label("Turn #",turnX,75,9,p.accent,Align::Left,52);
+    label("Change",changeX,75,9,p.accent,Align::Left,100);
+    label("Type",detailX,75,9,p.accent,Align::Right,65);
+    draw->box({12,88,289,1},p.line);
+    for(int row=0;row<5;++row){int index=historyPage+row;float y=93+row*23;
+        if(index>=static_cast<int>(rows.size()))break;
+        const auto& e=*rows[index];int who=std::clamp(e.player,0,g.config.players-1);
+        identityText(playerAbbreviation(g.players[who],who),playerX,y+4,11,g.players[who],Align::Left,47);
+        if(g.config.turnEnabled)label(e.turn<0?"?":number(e.turn),turnX,y+4,11,e.turn<0?p.muted:p.ink,Align::Left,50);
+        label((e.kind==HistoryKind::Poison?"P ":"")+signedNumber(e.after-e.before)+"→"+number(e.after),changeX,y+2,12,e.kind==HistoryKind::Poison?0xc48cf1:e.after>e.before?p.good:p.bad,Align::Left,g.config.turnEnabled?104:121);
+        std::string description=e.kind==HistoryKind::Poison?"Poison":e.source>=0?playerAbbreviation(g.players[e.source],e.source)+" CMD "+(e.slot?"B":"A"):"Life";
+        label(description,detailX,y+4,9,p.muted,Align::Right,72);
+        draw->box({12,y+20,289,.5f},p.line);
     }
-    int maximum=maxHistoryOffset();
-    if(maximum>0){float thumb=std::max(12.0f,114*5.0f/(maximum+5));draw->box({306,90,2,114},p.line);draw->box({306,90+(114-thumb)*historyPage/maximum,2,thumb},p.accent);}
-    button({12,211,66,25},"Undo",{Action::Undo},false,model.canUndo(),false,11);
-    button({84,211,66,25},"Newer",{Action::HistoryScroll,-1},false,historyPage>0,false,10);
-    button({156,211,78,25},"Older",{Action::HistoryScroll,1},false,historyPage<maximum,false,10);
-    button({240,211,68,25},"Menu",{Action::Menu},false,true,false,11);
+    if(rows.empty())label("No life or poison changes yet.",155,126,13,p.muted,Align::Center,280);
+    // Persistent right-hand scrollbar: track and thumb scale with item count.
+    int maximum=maxHistoryOffset();float trackY=93,trackH=111;
+    draw->box({305,trackY,3,trackH},p.line);
+    float thumb=maximum?std::max(12.f,trackH*5.0f/(maximum+5)):trackH;
+    draw->box({305,trackY+(maximum?(trackH-thumb)*historyPage/maximum:0),3,thumb},p.accent);
+    button({12,211,68,25},"Undo",{Action::Undo},false,model.canUndo(),false,11);
+    button({87,211,31,25},"",{Action::HistoryScroll,-1},false,historyPage>0,false);
+    button({124,211,31,25},"",{Action::HistoryScroll,1},false,historyPage<maximum,false);
+    // Pixel-stepped arrows; avoid font-dependent Unicode glyphs on 3DS.
+    for(int step=0;step<4;++step){float w=2+step*3;
+        draw->box({102.5f-w/2,218.f+step*2,w,2},historyPage>0?p.ink:p.muted);
+        draw->box({139.5f-w/2,225.f-step*2,w,2},historyPage<maximum?p.ink:p.muted);
+    }
+    button({162,211,68,25},"Redo",{Action::Redo},false,model.canRedo(),false,11);
+    button({237,211,71,25},"Menu",{Action::Menu},false,true,false,11);
 }
 void App::bottom(){
     auto& s=model.state;auto& g=s.game;
@@ -511,7 +508,7 @@ void App::dispatch(Command c){
     case Action::Redo:model.redo();soundTeam=-1;notice.clear();break;
     case Action::History:page=Page::History;historyPage=0;historyAll=true;scrollRemainder=0;break;
     case Action::HistoryAll:historyAll=true;historyPage=0;scrollRemainder=0;break;
-    case Action::HistoryScroll:scrollHistory(c.a*18.0f);break;
+    case Action::HistoryScroll:historyPage=std::clamp(historyPage+c.a,0,maxHistoryOffset());scrollRemainder=0;break;
     case Action::ResetTable:soundTeam=-1;model.resetTable();page=Page::Game;tab=0;message("Life and counters reset");break;
     case Action::Menu:page=Page::Menu;break;
     case Action::Help:returnPage=page;page=Page::Help;break;
@@ -550,7 +547,7 @@ void App::dispatch(Command c){
     case Action::DeletePreset:
         if(!c.b){confirm({Action::DeletePreset,c.a,1},"Delete this preset?","Your current setup and game\nwill stay unchanged.");break;}
         model.deletePreset(c.a);break;
-    case Action::Page:if(page==Page::History)scrollHistory(c.a*18.0f);else listPage+=c.a;break;
+    case Action::Page:if(page==Page::History){historyPage=std::clamp(historyPage+c.a,0,maxHistoryOffset());scrollRemainder=0;}else listPage+=c.a;break;
     case Action::Source:source=(source+1)%g.config.players;break;
     case Action::Slot:if(g.config.partners)slot=1-slot;break;
     case Action::Monarch:soundTeam=-1;model.marker(selected,false);break;
@@ -677,7 +674,7 @@ void App::keyDown(Key k,uint64_t ms){
     }
     if(k==Key::Start){dispatch({model.state.game.active?Action::Menu:Action::Home});focusVisible=true;return;}
     if((page==Page::Game||page==Page::History)&&!focusVisible){
-        if(page==Page::History&&(k==Key::Up||k==Key::Down)){scrollHistory(k==Key::Down?18:-18);return;}
+        if(page==Page::History&&(k==Key::Up||k==Key::Down)){historyPage=std::clamp(historyPage+(k==Key::Down?1:-1),0,maxHistoryOffset());scrollRemainder=0;return;}
         if(k==Key::L||k==Key::Left){if(page==Page::History)historyAll=false;selected=(selected+model.state.game.config.players-1)%model.state.game.config.players;historyPage=0;return;}
         if(k==Key::R||k==Key::Right){if(page==Page::History)historyAll=false;selected=(selected+1)%model.state.game.config.players;historyPage=0;return;}
         if(k==Key::X){dispatch({Action::Undo});return;}

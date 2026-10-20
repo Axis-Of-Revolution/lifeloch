@@ -126,7 +126,7 @@ void lifeText(Renderer& r,int value,float x,float y,float size,Color color,Align
                 r.box({dx+wave+first*skullW/20,dy+sy*skullH/18,(sx-first)*skullW/20,skullH/18},sy<10?0xc9c4b9:0x958f89);
             }
         }
-        color=0x777b82;
+        color=0xb8c3cb;
     }
     auto drawNumber=[&](Renderer& target){
         if(!std::isfinite(displayed)||std::abs(displayed-value)<.001f){pixelText(target,s,activeStart,y,size*scale,color,Align::Left,activeWidth);return;}
@@ -140,6 +140,20 @@ void lifeText(Renderer& r,int value,float x,float y,float size,Color color,Align
             else{if(a[i]!=' ')pixelText(clip,std::string(1,a[i]),dx,y+shift,size*scale,color,Align::Left,advance);if(b[i]!=' ')pixelText(clip,std::string(1,b[i]),dx,y+shift+(decreasing?-step:step),size*scale,color,Align::Left,advance);}
         }
     };
+    // Offset silhouettes give the raster serif numerals the same dark relief
+    // used by the HOME-screen LIFELOCH wordmark, without soft vector blur.
+    struct LifeDepth final:Renderer{
+        Renderer& target;float dx,dy;Color ink;
+        LifeDepth(Renderer& t,float x,float y,Color c):target(t),dx(x),dy(y),ink(c){}
+        void screen(int)override{}
+        void text(const std::string&,float,float,float,Color,Align,float)override{}
+        void box(Rect area,Color,float=0)override{target.box({area.x+dx,area.y+dy,area.w,area.h},ink);}
+    };
+    float depth=std::clamp(size/34.f,.7f,2.1f);
+    LifeDepth shadow(r,depth,depth*1.25f,0x0a171a);
+    LifeDepth edge(r,-depth*.48f,-depth*.42f,dead?0x34444a:0x293c3e);
+    drawNumber(shadow);
+    drawNumber(edge);
     if(effects&&!dead&&value<=flameThreshold){
         NumeralEffect effect(r,{activeStart,y,activeWidth,size*14/22},value,time,std::max(1.25f,size/17),value*4<=(startingLife>0?startingLife:flameThreshold*2));drawNumber(effect);
     }else drawNumber(r);

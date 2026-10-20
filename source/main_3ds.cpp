@@ -52,6 +52,7 @@ class NativeRenderer final:public deck::Renderer {
     C3D_Tex homeTexture{};
     Tex3DS_SubTexture homeSub{320,192,0.0f,1.0f,320.0f/512,1.0f-192.0f/256};
     bool homeReady=false;
+    uint64_t frameMs=0;
 public:
     NativeRenderer(){
         targets[0]=C2D_CreateScreenTarget(GFX_TOP,GFX_LEFT);targets[1]=C2D_CreateScreenTarget(GFX_BOTTOM,GFX_LEFT);textBuffer=C2D_TextBufNew(4096);
@@ -67,7 +68,19 @@ public:
         }
     }
     ~NativeRenderer(){if(homeReady)C3D_TexDelete(&homeTexture);C2D_TextBufDelete(textBuffer);}
-    void homeArtwork(deck::Rect area)override{if(homeReady)C2D_DrawImageAt({&homeTexture,&homeSub},area.x,area.y,0,nullptr,area.w/320,area.h/192);}
+    void setTime(uint64_t ms){frameMs=ms;}
+    void homeArtwork(deck::Rect area)override{
+        if(!homeReady)return;
+        constexpr int bands=24;
+        const float phase=6.28318530718f*float(frameMs%18000)/18000.f;
+        for(int i=0;i<bands;++i){
+            float sy=float(i)*192/bands,sh=192.f/bands;
+            Tex3DS_SubTexture slice{320,static_cast<uint16_t>(sh),0.f,1.f-sy/256.f,320.f/512.f,1.f-(sy+sh)/256.f};
+            // Two-pixel overscan prevents transparent edge gaps while the image waves.
+            float motion=1.25f*std::sin(phase+float(i)*.20f);
+            C2D_DrawImageAt({&homeTexture,&slice},area.x-2.f+motion,area.y+area.h*i/bands,0,nullptr,(area.w+4.f)/320.f,area.h/(bands*sh));
+        }
+    }
     void begin(){C2D_TextBufClear(textBuffer);}
     void screen(int which)override{C2D_TargetClear(targets[which],C2D_Color32(16,27,28,255));C2D_SceneBegin(targets[which]);}
     void box(deck::Rect r,deck::Color c,float=0)override{C2D_DrawRectSolid(r.x,r.y,0,r.w,r.h,color(c));}
@@ -104,7 +117,7 @@ int main(){
             if(gyroscopeReady){angularRate rate;hidGyroRead(&rate);app.setTrayRotation(rate.z/gyroUnitsPerDps*.01745329252f);}
             app.tick(now);
             for(auto sound:app.takeSounds())audio.play(sound);
-            C3D_FrameBegin(C3D_FRAME_SYNCDRAW);renderer.begin();app.render(renderer);C3D_FrameEnd(0);
+            C3D_FrameBegin(C3D_FRAME_SYNCDRAW);renderer.begin();renderer.setTime(now);app.render(renderer);C3D_FrameEnd(0);
             uint32_t down=hidKeysDown(),up=hidKeysUp(),held=hidKeysHeld();
             touchPosition touch;hidTouchRead(&touch);
             if(down&KEY_TOUCH)app.pointerDown(touch.px,touch.py,now);

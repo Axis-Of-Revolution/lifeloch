@@ -84,7 +84,7 @@ live.players[0].life=11;x.render();assert(element('#top').innerHTML.includes('da
 // Show only the three largest sources, with a stable player-order tie break.
 live.config.commander=true;live.players[0].damage=Array.from({length:6},()=>[0,0]);for(let [i,n] of [[1,1],[2,4],[3,3],[4,2]])live.players[0].damage[i][0]=n;x.render();assert.deepEqual([...element('#top').innerHTML.matchAll(/data-commander-source="(\d+)"/g)].map(m=>+m[1]),[2,3,4]);
 // Long values and names are bounded to their history cells in all-player view.
-live.history=[];for(let i=0;i<6;i++)for(let j=0;j<12;j++)live.history.push({team:i,player:i,delta:-99999,after:-9999,ts:now+j*3000,type:'life',src:-1,slot:0});act('history');assert.equal((svg().match(/data-history-cell/g)||[]).length,30);assert(!/NaN|Infinity/.test(svg()));click('histPlayer',[0]);disjoint();click('histScroll',[1]);assert(!buttons().find(b=>b.a==='histScroll'&&b.p[0]===-1).disabled);
+live.history=[];for(let i=0;i<6;i++)for(let j=0;j<12;j++)live.history.push({team:i,player:i,delta:-99999,after:-9999,ts:now+j*3000,type:'life',src:-1,slot:0});act('history');assert.equal((svg().match(/data-history-cell/g)||[]).length,5);assert(svg().includes('data-scroll-arrows="true"'));assert(buttons().some(b=>b.a==='redo'));assert(!/NaN|Infinity/.test(svg()));click('histPlayer',[0]);disjoint();click('histScroll',[1]);assert(!buttons().find(b=>b.a==='histScroll'&&b.p[0]===-1).disabled);
 // Fit every numeral rectangle (including 6/9 underlines) within its actual face.
 const h=ctx.testHelpers;for(let sides of [2,6,8,10,12,20])for(let f of h.diceMeshes[sides].faces){if(!f.label)continue;let text=sides===2?(f.label===1?'H':'T'):String(f.label),height=h.dieLabelHeight(h.diceMeshes[sides],f,text,sides===2?.95:sides>=12?.48:.65),m=h.diceMeshes[sides],u=h.Vunit(h.Vsub(m.vertices[f.ids[1]],m.vertices[f.ids[0]])),v=h.Vmul(h.Vcross(f.normal,u),-1),width=text.length*(sides===2?19:13),bottom=/[HT]/.test(text)?10:/[69]/.test(text)?9:7;assert(height>0);if(sides===10&&text==='10')assert(height<.65);for(let a=0;a<f.ids.length;a++){let start=m.vertices[f.ids[a]],edge=h.Vsub(m.vertices[f.ids[(a+1)%f.ids.length]],start),inward=h.Vunit(h.Vcross(f.normal,edge));for(let x of [-width/2,width/2])for(let y of [-7,bottom]){let point=h.Vadd(f.center,h.Vadd(h.Vmul(u,x*height/14),h.Vmul(v,y*height/14)));assert(h.Vdot(inward,h.Vsub(point,start))>=-.00001,`label outside d${sides} face ${text}`)}}}
 // Three inexpensive silhouette layers change shape/extent with height and orientation.
@@ -101,14 +101,17 @@ assert(html.includes('data-flame-pattern')&&html.includes('function flamePixel')
 for(let hot of [false,true])for(let x of [1,8,16,23])for(let y of [1,9,16,19])assert.equal(h.flamePixel(hot,x,y,0),h.flamePixel(hot,x,y,2400));
 assert.notEqual(h.flameTiles(true,600),h.flameTiles(false,600));
 assert(!html.includes('animateTransform'));
-// A turn break is shown only when enabled, and existing unattributed records
-// are grouped under a single earlier-turn divider.
+// One chronological list, with an optional explicit Turn # column. Legacy
+// events with missing turn metadata display a question mark.
 {let current=x.state.game;Object.assign(current.config,{players:2,heads:1,turnEnabled:true});
- current.history=[{team:0,player:0,delta:-1,after:39,type:'life',turn:0},{team:0,player:0,delta:-1,after:38,type:'life',turn:1}];
+ current.history=[{team:0,player:0,delta:-1,after:39,type:'life',turn:0},{team:0,player:0,delta:-1,after:38,type:'life',turn:1},{team:1,player:1,delta:-2,after:38,type:'life'}];
  act('history');let page=svg();assert(page.includes('Game history')||html.includes("header('Game history')"));
- assert(page.includes('TURN 1')||page.includes('md')); // glyph text uses path references
- assert.equal(h.historyRows(current,0).filter(r=>r.divider!==undefined).length,2);
- current.config.turnEnabled=false;assert.equal(h.historyRows(current,0).filter(r=>r.divider!==undefined).length,0);
+ assert(page.includes('data-history-index="0"')&&page.includes('data-history-index="2"'));
+ assert.equal(h.historyRows(current,-1).length,3);
+ assert.equal(h.historyRows(current,-1)[0].turn,0);
+ assert(page.includes('data-scroll-arrows="true"'));assert(buttons().some(b=>b.a==='redo'));
+ assert(html.includes("tx('Turn #',68"));
+ current.config.turnEnabled=false;x.render();assert(!svg().includes('data-turn-column'));
  act('resume');current.history=[];
 }
 // The history column reaches the badge band even when a commander box is present.
