@@ -1,9 +1,13 @@
-LIFELOCH v0.10.0 — SOURCE AND INTERACTIVE DEMO
+LIFELOCH v0.10.1 — SOURCE AND INTERACTIVE DEMO
 
 CIA: NOT BUILT. No native executable is included.
 Native SDK, cross-compiler and packaging tools are unavailable.
 
 VERIFIED
+- Seamless 2.4-second native flame loop and layered tongue fill in the standalone demo
+- Harder soft-limited critical-hit PCM synthesized from corresponding native/browser formulas
+- Compact commander strip and taller history, including narrow player configurations
+- New-game confirmation with existing history and default commander for 3+ players
 - Uniform outlined initials; overlapping team-divider joins
 - Reversing life inputs and poison inputs batch as net changes, with purple poison history
 - Small thud / critical sword PCM, poison sound thresholds, touch/key button flashes

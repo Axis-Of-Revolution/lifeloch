@@ -1,5 +1,7 @@
 # Nintendo 3DS / host build outputs
 build/
+build-host/
+qa/
 *.o
 *.elf
 *.3dsx

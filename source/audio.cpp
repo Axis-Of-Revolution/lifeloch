@@ -16,12 +16,16 @@ std::vector<int16_t> soundPcm(Sound sound){
             lowNoise+=(hiss-lowNoise)*.12f;
             v=(.55f*std::sin(2*pi*(72*t+146*(1-std::exp(-40*t))/40))+.28f*lowNoise)*std::exp(-t*38);break;
         case Sound::Impact:{
-            // A fast blade swish into a sharp strike and inharmonic steel ring.
+            // Critical hit: short rushing blade, hard attack transient, deep
+            // dropping thump, and a brief inharmonic steel edge; no clipping.
             lowNoise+=(hiss-lowNoise)*.15f;
-            v=.22f*(hiss-lowNoise)*std::sin(pi*std::min(1.f,t/.025f))*std::exp(-t*25);
-            float u=t-.018f;if(u>=0){
-                v+=.42f*hiss*std::exp(-u*85)+.28f*std::sin(2*pi*(112*u-90*u*u))*std::exp(-u*27);
-                v+=(.23f*std::sin(2*pi*1460*u)+.18f*std::sin(2*pi*2330*u)+.11f*std::sin(2*pi*3470*u))*std::exp(-u*16)*(1-std::exp(-u*1600));
+            float swish=(hiss-lowNoise)*std::sin(pi*std::min(1.f,t/.021f));
+            v=.29f*swish*std::exp(-t*34);
+            float u=t-.012f;if(u>=0){
+                float attack=std::exp(-u*170.f);
+                v+=.65f*hiss*attack+.37f*std::sin(2*pi*(155*u-160*u*u))*std::exp(-u*31);
+                v+=(.25f*std::sin(2*pi*1710*u)+.18f*std::sin(2*pi*2890*u)+.10f*std::sin(2*pi*4100*u))*std::exp(-u*31)*(1-std::exp(-u*1700));
+                float snap=u-.041f;if(snap>=0)v+=.21f*hiss*std::exp(-snap*115);
             }break;}
         case Sound::Chime:
             v=(.22f*std::sin(2*pi*880*t)+.12f*std::sin(2*pi*1320*t))*std::exp(-t*24);break;
@@ -38,7 +42,8 @@ std::vector<int16_t> soundPcm(Sound sound){
         case Sound::CoinClink:v=(.2f*std::sin(2*pi*1870*t)+.14f*std::sin(2*pi*2910*t)+.06f*hiss)*std::exp(-t*38);break;
         }
         float fade=std::min(1.0f,t/.0015f)*std::min(1.0f,(count-1-i)/(SoundRate*.008f));
-        out[i]=static_cast<int16_t>(std::clamp(v*fade,-.85f,.85f)*32767);
+        float shaped=sound==Sound::Impact?.83f*std::tanh(v*fade*1.2f):std::clamp(v*fade,-.85f,.85f);
+        out[i]=static_cast<int16_t>(shaped*32767);
     }return out;
 }
 }

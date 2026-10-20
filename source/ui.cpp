@@ -129,14 +129,14 @@ void App::damageRow(const Game& g,int who,Rect area){
     std::stable_sort(sources.begin(),sources.end(),[&](int a,int b){const auto& d=g.players[who].damage;return d[a][0]+(g.config.partners?d[a][1]:0)>d[b][0]+(g.config.partners?d[b][1]:0);});
     if(sources.size()>3)sources.resize(3);
     bool shortBox=area.h<25;float lineStep=shortBox?5.0f:8.0f,entryY=shortBox?7.5f:11.0f;
-    int cols=area.w>=168?3:area.w>=65?2:1;
+    int cols=area.w>=104?3:area.w>=70?2:1;
     label("Commander damage",area.x+3,area.y+(shortBox?1.0f:2.0f),shortBox?5.8f:6.5f,p.muted,Align::Left,area.w-6);
     if(sources.empty()){label("--",area.x+3,area.y+entryY,7,p.muted,Align::Left,area.w-6);return;}
     for(int item=0;item<static_cast<int>(sources.size());++item){
-        float cw=(area.w-6)/cols,x=area.x+3+(item%cols)*cw,y=area.y+entryY+(item/cols)*lineStep;
+        float cw=(area.w-4)/cols,x=area.x+2+(item%cols)*cw,y=area.y+entryY+(item/cols)*lineStep;
         int j=sources[item],a=g.players[who].damage[j][0],b=g.players[who].damage[j][1];
         std::string text=playerAbbreviation(g.players[j],j)+":"+number(a);if(g.config.partners)text+="/"+number(b);
-        identityText(text,x,y,shortBox?6.5f:7.0f,g.players[j],Align::Left,cw-3);
+        identityText(text,x,y,shortBox?6.5f:7.0f,g.players[j],Align::Left,cw-1);
     }
 }
 void App::board(const Game& g,bool preview){
@@ -167,20 +167,22 @@ void App::board(const Game& g,bool preview){
         float badgeY=h-5-(badges?11:0);
         int sources=0;for(int j=0;j<g.config.players;++j)if(g.players[i].damage[j][0]||(g.config.partners&&g.players[i].damage[j][1]))++sources;
         sources=std::min(sources,3);
-        int cols=w>=180?3:w>=90?2:1,rows=std::max(1,(sources+cols-1)/cols);
+        float commandW=std::min(w-12,std::max(76.f,w*.62f-8));
+        int cols=commandW>=104?3:commandW>=70?2:1,rows=std::max(1,(sources+cols-1)/cols);
         bool sideDamage=h<80&&g.config.commander;
         float left=w*(sideDamage?.43f:.62f),lifeW=left-10,historyX=left+2;
         float commandH=g.config.commander?11+rows*8:0,commandY=badgeY-(badges?3:0)-commandH;
         if(sideDamage){commandY=24;commandH=badgeY-3-commandY;}
         float lifeY=24,lifeBottom=(sideDamage?badgeY-3:(g.config.commander?commandY:badgeY))-4,lifeH=std::max(1.0f,lifeBottom-lifeY);
+        float historyBottom=(sideDamage?badgeY-3:badgeY)-4;
         float shown=preview?g.players[i].life:displayedLife(i);float digits=std::max({pixelAdvance("00"),pixelAdvance(number(g.players[i].life)),pixelAdvance(number(static_cast<int>(std::round(shown))))});
         float lifeSize=std::min(lifeH*22/16,lifeW*22/digits);
-        if(!sideDamage){draw->box({historyX,24,1,std::max(1.0f,lifeBottom-24)},p.line);
+        if(!sideDamage){draw->box({historyX,24,1,std::max(1.0f,historyBottom-24)},p.line);
         float historyFont=compact?7:10,spacing=compact?9:13;
-        int count=std::max(0,1+static_cast<int>(std::floor((lifeBottom-24-6)/spacing)));
+        int count=std::max(0,1+static_cast<int>(std::floor((historyBottom-24-6)/spacing)));
         if(!preview&&count)miniHistory(i/g.config.heads,historyX+4,24,w-historyX-9,count,spacing,historyFont);
         }
-        if(g.config.commander)damageRow(g,i,sideDamage?Rect{historyX,commandY,w-historyX-6,commandH}:Rect{6,commandY,w-12,commandH});
+        if(g.config.commander)damageRow(g,i,sideDamage?Rect{historyX,commandY,w-historyX-6,commandH}:Rect{6,commandY,commandW,commandH});
         lifeText(*draw,g.players[i].life,6,lifeY,lifeSize,(!preview&&model.atThreshold(i))?p.bad:p.ink,Align::Left,lifeW,now,g.config.life/2,!preview,!preview&&model.atThreshold(i),shown,!preview&&lifeMotion[i].from>lifeMotion[i].target,g.config.life);
         float badgeW=(w-12)/std::max(1,badges);int at=0;
         for(int j=0;j<3;++j)if(values[j]){label(std::string(codes[j])+number(values[j]),6+at*badgeW,badgeY,9.0f,colors[j],Align::Left,badgeW-3);++at;}
@@ -443,6 +445,7 @@ void App::bottom(){
 }
 void App::back(){
     if(confirming.action!=Action::None){confirming={};return;}
+    if(page==Page::Rules)newGameApproved=false;
     switch(page){
     case Page::Rules:case Page::Menu:page=model.state.game.active?Page::Game:Page::Home;break;
     case Page::Seats:case Page::Presets:case Page::Options:page=Page::Rules;break;
@@ -465,15 +468,17 @@ void App::dispatch(Command c){
     if(confirming.action!=Action::None&&c.action!=Action::Confirm&&c.action!=Action::Cancel&&c.action!=Action::Back)return;
     auto& s=model.state;auto& g=s.game;
     switch(c.action){
-    case Action::NewGame:soundTeam=-1;s.setup=Config{};s.seats.fill(-1);model.touch();page=Page::Rules;pickSeat=-1;editingGameLayout=assigningLiveProfiles=false;break;
-    case Action::Home:page=Page::Home;break;
-    case Action::Resume:if(g.active){page=Page::Game;tab=0;focusVisible=false;}break;
+    case Action::NewGame:
+        if(!c.a&&g.active&&!g.history.empty()){confirm({Action::NewGame,1},"Create a new game?","This will replace the current game\nand its life change history.");break;}
+        newGameApproved=g.active&&!g.history.empty();soundTeam=-1;s.setup=Config{};s.seats.fill(-1);model.touch();page=Page::Rules;pickSeat=-1;editingGameLayout=assigningLiveProfiles=false;break;
+    case Action::Home:newGameApproved=false;page=Page::Home;break;
+    case Action::Resume:if(g.active){newGameApproved=false;page=Page::Game;tab=0;focusVisible=false;}break;
     case Action::Rules:page=Page::Rules;break;
     case Action::Seats:assigningLiveProfiles=false;page=Page::Seats;break;
     case Action::Begin:
         soundTeam=-1;
-        if(g.active&&c.a==0){confirm({Action::Begin,1},"Start a new game?","This replaces the current game\nand its life history.");break;}
-        if(model.start()){lifeMotion={};s.themeColors=s.setup.themeColors;page=Page::Game;focusVisible=false;selected=0;tab=0;source=1;slot=0;historyPage=0;}break;
+        if(g.active&&c.a==0&&!newGameApproved){confirm({Action::Begin,1},"Start a new game?","This replaces the current game\nand its life history.");break;}
+        if(model.start()){newGameApproved=false;lifeMotion={};s.themeColors=s.setup.themeColors;page=Page::Game;focusVisible=false;selected=0;tab=0;source=1;slot=0;historyPage=0;}break;
     case Action::SelectPlayer:selected=c.a;historyPage=0;scrollRemainder=0;if(page==Page::History)historyAll=false;break;
     case Action::Tab:if(c.a!=1||g.config.commander)tab=c.a;break;
     case Action::Change:{bool poison=c.b==int(Counter::Poison);int before=poison?g.players[selected].poison:g.players[selected].life;
@@ -499,10 +504,10 @@ void App::dispatch(Command c){
     case Action::Players:editingGameLayout=false;page=Page::Layout;break;
     case Action::GameLayout:if(g.active){editingGameLayout=true;page=Page::Layout;}break;
     case Action::LayoutDone:page=editingGameLayout?Page::Menu:Page::Rules;break;
-    case Action::PlayerCount:if(editingGameLayout&&page==Page::Layout)break;if(c.a>=2&&c.a<=6&&c.a%s.setup.heads==0&&c.a/s.setup.heads>=2){if(s.setup.players!=c.a)s.setup.life=c.a>=3?40:20;s.setup.players=c.a;chooseLayout(s.setup,s.setup.players==3?2:s.setup.players==5?1:0);model.touch();}break;
+    case Action::PlayerCount:if(editingGameLayout&&page==Page::Layout)break;if(c.a>=2&&c.a<=6&&c.a%s.setup.heads==0&&c.a/s.setup.heads>=2){if(s.setup.players!=c.a){s.setup.life=c.a>=3?40:20;s.setup.commander=c.a>=3;}s.setup.players=c.a;chooseLayout(s.setup,s.setup.players==3?2:s.setup.players==5?1:0);model.touch();}break;
     case Action::Layout:chooseLayout(editingGameLayout?g.config:s.setup,c.a);model.touch();break;
     case Action::Life:request(InputKind::Life,s.setup.heads>1?"Starting team life (1-999)":"Starting life (1-999)",number(s.setup.life),true);break;
-    case Action::Heads:{int old=s.setup.players;s.setup.heads=c.a;s.setup.players=std::max(2*c.a,(s.setup.players/c.a)*c.a);if(old!=s.setup.players)s.setup.life=s.setup.players>=3?40:20;chooseLayout(s.setup,s.setup.players==3?2:s.setup.players==5?1:0);model.touch();break;}
+    case Action::Heads:{int old=s.setup.players;s.setup.heads=c.a;s.setup.players=std::max(2*c.a,(s.setup.players/c.a)*c.a);if(old!=s.setup.players){s.setup.life=s.setup.players>=3?40:20;s.setup.commander=s.setup.players>=3;}chooseLayout(s.setup,s.setup.players==3?2:s.setup.players==5?1:0);model.touch();break;}
     case Action::Commander:if(page==Page::Clock||page==Page::GameTrackers){g.config.commander=!g.config.commander;if(!g.config.commander&&tab==1)tab=0;}else s.setup.commander=!s.setup.commander;model.touch();break;
     case Action::Partners:{auto& config=(page==Page::Clock||page==Page::GameTrackers)?g.config:s.setup;if(config.commander){config.partners=!config.partners;if(!config.partners)slot=0;model.touch();}break;}
     case Action::PickSeat:assigningLiveProfiles=page==Page::ActiveSeats;pickSeat=c.a;listPage=0;page=Page::Profiles;break;

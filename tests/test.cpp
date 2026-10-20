@@ -104,7 +104,7 @@ int main(){
     App history;history.model.state.setup={4,40,true,false,true,1};history.model.start();history.page=Page::Game;
     for(int i=1;i<=9;++i){history.model.setInputTime(i*3000);history.model.change(0,Counter::Life,-i);}
     Probe recent;history.render(recent);assert(std::find(recent.topWords.begin(),recent.topWords.end(),"-9→-5")!=recent.topWords.end());
-    auto visible=std::count_if(recent.topWords.begin(),recent.topWords.end(),[](const auto& text){return text.find("→")!=std::string::npos;});assert(visible>=1&&visible<=5);
+    auto visible=std::count_if(recent.topWords.begin(),recent.topWords.end(),[](const auto& text){return text.find("→")!=std::string::npos;});assert(visible>=1&&visible<=9);
     history.dispatch({Action::History});assert(history.showingAllHistory());Probe all;history.render(all);assert(std::find(all.bottomWords.begin(),all.bottomWords.end(),"All")!=all.bottomWords.end());
     history.pointerDown(160,170,40000);history.pointerMove(160,116);history.pointerUp();assert(history.historyOffset()==3);history.keyDown(Key::Down,40100);assert(history.historyOffset()==4);history.dispatch({Action::HistoryScroll,-1});assert(history.historyOffset()==3);history.scrollHistory(-10000);assert(history.historyOffset()==0);
     history.dispatch({Action::SelectPlayer,0});assert(!history.showingAllHistory());Probe individual;history.render(individual);for(const auto& word:individual.bottomWords)if(word.find("→")!=std::string::npos)assert(word.find(':')==std::string::npos);

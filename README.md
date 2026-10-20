@@ -1,10 +1,18 @@
-# Lifeloch — v0.10.0
+# Lifeloch — v0.10.1
 
 Native Nintendo 3DS game tracker with a standalone offline browser demo. The dark medieval serif interface, raster numerals, WUBRG themes, and existing player layouts remain the visual baseline.
 
 Open `dist/Lifeloch-v0.10-Demo.html`. It contains its artwork, font, audio synthesis, and scripts; no server or external assets are needed. It is a separate browser implementation, not a 3DS emulator. Existing browser saves retain their storage key.
 
-## This revision
+## v0.10.1 refinements
+
+- Low-life numerals now carry layered, rising flame tongues with ivory/amber cores. Both native and browser visuals loop every 2.4 seconds with matching flame colors and no abrupt animation-phase resets. The browser keeps the animation in the SVG fill instead of recreating a timed CSS style each render.
+- Large life losses have a harder critical-hit attack, a deeper decaying body strike, a short second transient, and a faster steel edge. Both renderers share the same deterministic 22.05 kHz synthesis and a soft-limited peak.
+- The commander damage strip is narrower beneath life totals, with tighter source-cell spacing. The history column reaches the bottom counters regardless of the commander strip; compact seats allow a small intrusion where necessary.
+- Choosing **Create a new game** with existing life/poison history immediately asks for confirmation, before setup changes or the previous game is discarded. Cancel returns to the existing game. Confirmed setup avoids a second prompt when starting.
+- Changing the setup player count to three or more now turns on commander damage automatically and sets starting life to 40. Changing back to two turns it off and restores the 20-life default. Manual overrides and saved presets remain available.
+
+## v0.10 baseline
 
 - Profile abbreviations use one ivory fill with a thin dark glyph outline, including white/black gradients. There is no small black backing rectangle or split-letter fill.
 - Team dividers have overlapping square joins. All dark edging is painted before the light lines so corners and T-junctions stay continuous.

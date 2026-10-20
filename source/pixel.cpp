@@ -64,14 +64,26 @@ class NumeralEffect final:public Renderer {
             if(skullRows[sy][sx]=='1')return sy<6?0xf3e8d0:(sy<11?0xd6cbb8:0xb5a5a6);
             return ((sx+sy)%5==0)?0x65596d:0x3c344c;
         }
-        float t=float(time%60000)/180;
-        float edge=(intense?-.12f:.30f)+(intense?.23f:.15f)*std::sin(u*17+t)+.10f*std::sin(u*31-t*1.4f);
-        float heat=(v-edge)/(1-edge);
-        if(intense&&heat>.63f)return 0xfff4cb;
-        if(heat>.77f)return 0xffed98;
-        if(heat>.48f)return 0xffbc49;
-        if(heat>.18f)return 0xec742f;
-        if(heat>-.10f)return 0xb83a27;
+        // Three rising tongues with a fixed 2.4s period. Every harmonic is
+        // integral, so the first and last frame have identical flame geometry.
+        constexpr float tau=6.28318530718f;
+        float phase=tau*float(time%2400)/2400.f;
+        float tip=intense?.51f:.63f;
+        for(int j=0;j<3;++j){
+            float center=(j+.5f)/3+.045f*std::sin(phase*(j%2+1)+j*1.9f);
+            float reach=std::max(0.f,1.f-std::abs(u-center)/.23f);
+            reach*=reach;
+            float crest=(intense?.50f:.40f)*(.79f+.21f*std::sin(phase*(j%2+1)+j*2.1f));
+            tip=std::min(tip,(intense?.54f:.67f)-reach*crest);
+        }
+        tip+=.018f*std::sin(u*21.f-phase*2.f)+.012f*std::sin(u*37.f+phase*3.f);
+        float heat=std::clamp((v-tip)/(1.f-tip),-1.f,1.2f);
+        // Ivory core on critical life, ochre/amber mid-flame and ember tips.
+        if(intense&&heat>.70f)return 0xfff4cb;
+        if(heat>.84f)return 0xffed98;
+        if(heat>.52f)return 0xffbc49;
+        if(heat>.23f)return 0xec742f;
+        if(heat>-.06f)return 0xb83a27;
         return 0x6c2633;
     }
 public:

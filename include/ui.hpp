@@ -99,7 +99,7 @@ private:
     std::array<LifeMotion,MaxPlayers> lifeMotion{};
     void syncLifeMotion();
     float displayedLife(int player)const;
-    bool editingGameLayout=false,assigningLiveProfiles=false,focusVisible=false;
+    bool editingGameLayout=false,assigningLiveProfiles=false,focusVisible=false,newGameApproved=false;
     Page focusPage=Page::Home;
     bool focusModal=false;
     Command focused;
