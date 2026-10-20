@@ -40,7 +40,7 @@ std::vector<uint8_t> legacyBytes(std::vector<uint8_t> b,int version){
     removed.push_back(p+72);p+=76; // game config
     size_t q=p+8; // monarch / initiative, then six player records
     for(int i=0;i<6;++i){int bytes=read(q);q+=4+bytes+68;}
-    q+=4;int events=read(q);b.resize(b.size()-24-events*4); // v7 links and v8 event kinds
+    q+=4;int events=read(q);b.resize(b.size()-24-events*8); // v7 links, v8 kinds and v9 event turns
     for(auto it=removed.rbegin();it!=removed.rend();++it)b.erase(b.begin()+*it,b.begin()+*it+4);
     if(version==1)b.resize(b.size()-56);
     if(version==2)b.resize(b.size()-52);

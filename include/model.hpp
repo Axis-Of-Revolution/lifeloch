@@ -35,6 +35,7 @@ struct LifeEvent {
     int team=0, player=0, before=0, after=0, source=-1, slot=0;
     uint32_t seconds=0;
     HistoryKind kind=HistoryKind::Life;
+    int turn=-1; // -1 for historic saves predating turn attribution
     bool operator==(const LifeEvent& b) const;
 };
 struct Game {

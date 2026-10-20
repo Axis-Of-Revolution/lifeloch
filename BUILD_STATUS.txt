@@ -1,9 +1,12 @@
-LIFELOCH v0.10.1 — SOURCE AND INTERACTIVE DEMO
+LIFELOCH v0.10.2 — SOURCE AND INTERACTIVE DEMO
 
 CIA: NOT BUILT. No native executable is included.
 Native SDK, cross-compiler and packaging tools are unavailable.
 
 VERIFIED
+- Four-player commander/history/counter band alignment; square-cell flame loop and critical threshold
+- Game history turn separators, with version 9 persistent event metadata and old-save migration
+- Algorithmic 200x120-to-400x240 nearest-neighbor home artwork pixelation
 - Seamless 2.4-second native flame loop and layered tongue fill in the standalone demo
 - Harder soft-limited critical-hit PCM synthesized from corresponding native/browser formulas
 - Compact commander strip and taller history, including narrow player configurations

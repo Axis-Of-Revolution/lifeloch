@@ -7,7 +7,10 @@ from PIL import Image,ImageDraw,ImageOps
 import re,wave
 root=Path(__file__).resolve().parents[1]
 source=Image.open(root/'assets/home-source.jpg').convert('RGB')
-home=ImageOps.fit(source,(400,240),Image.Resampling.LANCZOS,centering=(.5,.35))
+original=ImageOps.fit(source,(400,240),Image.Resampling.LANCZOS,centering=(.5,.35))
+# Deliberate mild pixelation from the ORIGINAL source. No generative steps.
+# 200x120 texels stretched nearest-neighbor to 400x240.
+home=original.resize((200,120),Image.Resampling.LANCZOS).resize((400,240),Image.Resampling.NEAREST)
 home.save(root/'assets/home.png',optimize=True)
 # A tighter square keeps Emry's face and sword legible at the HOME icon size.
 icon=source.crop((335,95,1215,975)).resize((48,48),Image.Resampling.LANCZOS)

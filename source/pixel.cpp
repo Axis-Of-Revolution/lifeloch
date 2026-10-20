@@ -64,27 +64,28 @@ class NumeralEffect final:public Renderer {
             if(skullRows[sy][sx]=='1')return sy<6?0xf3e8d0:(sy<11?0xd6cbb8:0xb5a5a6);
             return ((sx+sy)%5==0)?0x65596d:0x3c344c;
         }
-        // Three rising tongues with a fixed 2.4s period. Every harmonic is
-        // integral, so the first and last frame have identical flame geometry.
+        // Tile-sampled flame sprites. Every moving component repeats after 2400ms;
+        // avoid the discontinuous phase/flicker of the older 60-second clock.
         constexpr float tau=6.28318530718f;
-        float phase=tau*float(time%2400)/2400.f;
-        float tip=intense?.51f:.63f;
-        for(int j=0;j<3;++j){
-            float center=(j+.5f)/3+.045f*std::sin(phase*(j%2+1)+j*1.9f);
-            float reach=std::max(0.f,1.f-std::abs(u-center)/.23f);
+        u=std::clamp((std::floor(u*24)+.5f)/24,0.f,1.f);
+        v=std::clamp((std::floor(v*20)+.5f)/20,0.f,1.f);
+        const float phase=tau*float(time%2400)/2400.f;
+        float top=intense?.61f:.70f;
+        for(int j=0;j<4;++j){
+            const float center=(j+.5f)/4+.035f*std::sin(phase*(j%2+1)+j*1.6f);
+            float reach=std::max(0.f,1.f-std::abs(u-center)/.20f);
             reach*=reach;
-            float crest=(intense?.50f:.40f)*(.79f+.21f*std::sin(phase*(j%2+1)+j*2.1f));
-            tip=std::min(tip,(intense?.54f:.67f)-reach*crest);
+            float rise=(intense?.49f:.29f)*(.83f+.17f*std::sin(phase*(j%2+1)+j*1.7f));
+            top=std::min(top,(intense?.63f:.75f)-rise*reach);
         }
-        tip+=.018f*std::sin(u*21.f-phase*2.f)+.012f*std::sin(u*37.f+phase*3.f);
-        float heat=std::clamp((v-tip)/(1.f-tip),-1.f,1.2f);
-        // Ivory core on critical life, ochre/amber mid-flame and ember tips.
-        if(intense&&heat>.70f)return 0xfff4cb;
-        if(heat>.84f)return 0xffed98;
-        if(heat>.52f)return 0xffbc49;
-        if(heat>.23f)return 0xec742f;
-        if(heat>-.06f)return 0xb83a27;
-        return 0x6c2633;
+        top+=.025f*std::sin(u*26.f-phase*2.f);
+        float heat=(v-top)/(.99f-top);
+        if(intense&&heat>.70f)return 0xfff1b5;
+        if(heat>.85f)return 0xffda72;
+        if(heat>.56f)return intense?0xffa337:0xeeae48;
+        if(heat>.27f)return intense?0xee611e:0xd86f2b;
+        if(heat>-.04f)return intense?0xc52b16:0xa84626;
+        return intense?0x702019:0x5c2930;
     }
 public:
     NumeralEffect(Renderer& target,Rect bounds,int life,uint64_t time,float step,bool intense):target(target),bounds(bounds),life(life),time(time),step(step),intense(intense){}
@@ -140,7 +141,7 @@ void lifeText(Renderer& r,int value,float x,float y,float size,Color color,Align
         }
     };
     if(effects&&!dead&&value<=flameThreshold){
-        NumeralEffect effect(r,{activeStart,y,activeWidth,size*14/22},value,time,std::max(.65f,size/28),value*4<=(startingLife>0?startingLife:flameThreshold*2));drawNumber(effect);
+        NumeralEffect effect(r,{activeStart,y,activeWidth,size*14/22},value,time,std::max(1.25f,size/17),value*4<=(startingLife>0?startingLife:flameThreshold*2));drawNumber(effect);
     }else drawNumber(r);
     if(!effects||(std::isfinite(displayed)&&std::abs(displayed-value)>=.001f))return;
     // A contrasting underline distinguishes 6 from 9 when viewed upside down.

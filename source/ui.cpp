@@ -164,27 +164,28 @@ void App::board(const Game& g,bool preview){
         const char* codes[]={"P:","E:","X:"};const Color colors[]={0xc48cf1,0xffda58,0xc8d0dc};
         int badges=0;for(int v:values)if(v)++badges;
         bool roles=g.monarch==i||g.initiative==i;if(roles)++badges;
-        float badgeY=h-5-(badges?11:0);
+        float badgeY=h-6-(badges?9:0);
         int sources=0;for(int j=0;j<g.config.players;++j)if(g.players[i].damage[j][0]||(g.config.partners&&g.players[i].damage[j][1]))++sources;
         sources=std::min(sources,3);
-        float commandW=std::min(w-12,std::max(76.f,w*.62f-8));
-        int cols=commandW>=104?3:commandW>=70?2:1,rows=std::max(1,(sources+cols-1)/cols);
         bool sideDamage=h<80&&g.config.commander;
         float left=w*(sideDamage?.43f:.62f),lifeW=left-10,historyX=left+2;
+        float commandW=historyX-6+1; // share the history divider's one-pixel edge
+        int cols=commandW>=104?3:commandW>=70?2:1,rows=std::max(1,(sources+cols-1)/cols);
         float commandH=g.config.commander?11+rows*8:0,commandY=badgeY-(badges?3:0)-commandH;
         if(sideDamage){commandY=24;commandH=badgeY-3-commandY;}
         float lifeY=24,lifeBottom=(sideDamage?badgeY-3:(g.config.commander?commandY:badgeY))-4,lifeH=std::max(1.0f,lifeBottom-lifeY);
         float historyBottom=(sideDamage?badgeY-3:badgeY)-4;
         float shown=preview?g.players[i].life:displayedLife(i);float digits=std::max({pixelAdvance("00"),pixelAdvance(number(g.players[i].life)),pixelAdvance(number(static_cast<int>(std::round(shown))))});
         float lifeSize=std::min(lifeH*22/16,lifeW*22/digits);
-        if(!sideDamage){draw->box({historyX,24,1,std::max(1.0f,historyBottom-24)},p.line);
+        if(!sideDamage){
         float historyFont=compact?7:10,spacing=compact?9:13;
         int count=std::max(0,1+static_cast<int>(std::floor((historyBottom-24-6)/spacing)));
         if(!preview&&count)miniHistory(i/g.config.heads,historyX+4,24,w-historyX-9,count,spacing,historyFont);
         }
         if(g.config.commander)damageRow(g,i,sideDamage?Rect{historyX,commandY,w-historyX-6,commandH}:Rect{6,commandY,commandW,commandH});
+        if(!sideDamage)draw->box({historyX,24,1,std::max(1.0f,historyBottom-24)},0x607c80);
         lifeText(*draw,g.players[i].life,6,lifeY,lifeSize,(!preview&&model.atThreshold(i))?p.bad:p.ink,Align::Left,lifeW,now,g.config.life/2,!preview,!preview&&model.atThreshold(i),shown,!preview&&lifeMotion[i].from>lifeMotion[i].target,g.config.life);
-        float badgeW=(w-12)/std::max(1,badges);int at=0;
+        float badgeW=(historyX-6)/std::max(1,badges);int at=0;
         for(int j=0;j<3;++j)if(values[j]){label(std::string(codes[j])+number(values[j]),6+at*badgeW,badgeY,9.0f,colors[j],Align::Left,badgeW-3);++at;}
         if(roles){float bx=6+at*badgeW,mw=std::min(11.0f,(badgeW-3)/2);
             if(g.monarch==i)drawMarker(*draw,{bx,badgeY,mw,9},false);
@@ -225,10 +226,23 @@ void App::footer(){
     button({g.config.turnEnabled?261.0f:214.0f,211,g.config.turnEnabled?47.0f:94.0f,25},"Menu",{Action::Menu},false,true,false,11);
 }
 
+namespace {
+struct HistoryDisplayRow{const LifeEvent* event=nullptr;int turn=-1;};
+std::vector<HistoryDisplayRow> historyRows(const Game& g,int team){
+    std::vector<HistoryDisplayRow> rows;int previous=-2;
+    for(auto it=g.history.rbegin();it!=g.history.rend();++it){
+        if(it->team!=team)continue;
+        if(g.config.turnEnabled&&it->turn!=previous){rows.push_back({nullptr,it->turn});previous=it->turn;}
+        rows.push_back({&*it,-1});
+    }
+    return rows;
+}
+std::string turnDivider(int turn){return turn<0?"EARLIER TURNS":"TURN "+number(turn);}
+}
 int App::maxHistoryOffset()const{
-    const auto& g=model.state.game;std::array<int,MaxPlayers> counts{};
-    for(const auto& event:g.history)++counts[event.team];
-    int rows=historyAll?*std::max_element(counts.begin(),counts.end()):counts[selected/g.config.heads];
+    const auto& g=model.state.game;int rows=0;
+    if(historyAll){for(int i=0;i<g.config.players;i+=g.config.heads)rows=std::max(rows,int(historyRows(g,i/g.config.heads).size()));}
+    else rows=static_cast<int>(historyRows(g,selected/g.config.heads).size());
     return std::max(0,rows-5);
 }
 void App::scrollHistory(float pixels){
@@ -237,31 +251,37 @@ void App::scrollHistory(float pixels){
     if(rows){historyPage=std::clamp(historyPage+rows,0,maxHistoryOffset());scrollRemainder-=rows*18;}
 }
 void App::historyView(){
-    const auto& g=model.state.game;header("Life and poison history");
+    const auto& g=model.state.game;header("Game history");
     button({12,41,42,25},"All",{Action::HistoryAll},historyAll,true,false,11);
     float width=(248.0f-(g.config.players-1)*4)/g.config.players;
     for(int i=0;i<g.config.players;++i)button({60+i*(width+4),41,width,25},playerAbbreviation(g.players[i],i),{Action::SelectPlayer,i},!historyAll&&selected==i,true,false,11);
-    std::array<std::vector<const LifeEvent*>,MaxPlayers> columns;
-    for(auto it=g.history.rbegin();it!=g.history.rend();++it)columns[it->team].push_back(&*it);
     historyPage=std::clamp(historyPage,0,maxHistoryOffset());
     if(historyAll){
         float colWidth=296.0f/g.config.players;
-        for(int i=0;i<g.config.players;++i){float x=12+i*colWidth;const auto& events=columns[i/g.config.heads];
+        for(int i=0;i<g.config.players;++i){float x=12+i*colWidth;auto rows=historyRows(g,i/g.config.heads);
             identityText(playerAbbreviation(g.players[i],i),x+colWidth/2,75,9,g.players[i],Align::Center,colWidth-6);
             draw->box({x+2,86,colWidth-4,1},p.line);
-            for(int row=0;row<5;++row){int index=historyPage+row;draw->box({x+2,111+row*23.0f,colWidth-4,.5f},p.line);if(index>=static_cast<int>(events.size()))continue;const auto& e=*events[index];float y=91+row*23.0f;
+            for(int row=0;row<5;++row){int index=historyPage+row;float y=91+row*23.0f;
+                draw->box({x+2,111+row*23.0f,colWidth-4,.5f},p.line);
+                if(index>=static_cast<int>(rows.size()))continue;
+                auto r=rows[index];
+                if(!r.event){draw->box({x+2,y,colWidth-4,19},p.raised);label(turnDivider(r.turn),x+colWidth/2,y+5,8,p.accent,Align::Center,colWidth-6);continue;}
+                const auto& e=*r.event;
                 label((e.kind==HistoryKind::Poison?"P ":"")+signedNumber(e.after-e.before)+"→"+number(e.after),x+colWidth/2,y+3,11,e.kind==HistoryKind::Poison?0xc48cf1:e.after>e.before?p.good:p.bad,Align::Center,colWidth-6);
             }
-            if(events.empty())label("--",x+colWidth/2,102,11,p.muted,Align::Center,colWidth-8);
+            if(rows.empty())label("--",x+colWidth/2,102,11,p.muted,Align::Center,colWidth-8);
         }
     }else{
-        const auto& events=columns[selected/g.config.heads];identityText(g.players[selected].name,12,75,11,g.players[selected],Align::Left,180);label("Latest first",302,75,9,p.muted,Align::Right,100);
-        for(int row=0;row<5;++row){int index=historyPage+row;if(index>=static_cast<int>(events.size()))break;const auto& e=*events[index];float y=91+row*23.0f;
+        auto rows=historyRows(g,selected/g.config.heads);identityText(g.players[selected].name,12,75,11,g.players[selected],Align::Left,180);label("Latest first",302,75,9,p.muted,Align::Right,100);
+        for(int row=0;row<5;++row){int index=historyPage+row;if(index>=static_cast<int>(rows.size()))break;
+            float y=91+row*23.0f;auto r=rows[index];
+            if(!r.event){draw->box({12,y,290,20},p.raised);label(turnDivider(r.turn),16,y+4,10,p.accent);draw->box({12,y+20,290,1},p.line);continue;}
+            const auto& e=*r.event;
             label((e.kind==HistoryKind::Poison?"P ":"")+signedNumber(e.after-e.before)+"→"+number(e.after),14,y,16,e.kind==HistoryKind::Poison?0xc48cf1:e.after>e.before?p.good:p.bad,Align::Left,174);
             label(e.kind==HistoryKind::Poison?"Poison":e.source>=0?playerAbbreviation(g.players[e.source],e.source)+" CMD "+(e.slot?"B":"A"):"Life",300,y+2,10,p.muted,Align::Right,94);
             draw->box({12,y+20,290,1},p.line);
         }
-        if(events.empty())label("No life or poison changes yet.",160,122,14,p.muted,Align::Center,280);
+        if(rows.empty())label("No life or poison changes yet.",160,122,14,p.muted,Align::Center,280);
     }
     int maximum=maxHistoryOffset();
     if(maximum>0){float thumb=std::max(12.0f,114*5.0f/(maximum+5));draw->box({306,90,2,114},p.line);draw->box({306,90+(114-thumb)*historyPage/maximum,2,thumb},p.accent);}

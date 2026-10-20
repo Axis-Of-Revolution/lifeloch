@@ -20,7 +20,7 @@ struct Writer {
     void config(const Config& c) {number(c.players);number(c.life);boolean(c.commander);boolean(c.partners);boolean(c.linkLife);number(c.heads);boolean(c.turnEnabled);boolean(c.timerEnabled);boolean(c.clockEnabled);number(c.timerSeconds);number(c.layout);number(c.startTurn);for(int r:c.rotations)number(r);number(c.themeColors);}
 };
 struct Reader {
-    const std::vector<uint8_t>& b; size_t pos=0; bool ok=true; int version=8;
+    const std::vector<uint8_t>& b; size_t pos=0; bool ok=true; int version=9;
     int32_t number() {if(pos+4>b.size()){ok=false;return 0;}uint32_t v=0;for(int i=0;i<4;++i)v|=uint32_t(b[pos++])<<(8*i);return static_cast<int32_t>(v);}
     bool boolean() {int n=number();if(n<0||n>1)ok=false;return n==1;}
     std::string string() {int n=number();if(n<0||n>64||pos+static_cast<size_t>(n)>b.size()){ok=false;return "";}std::string s(b.begin()+pos,b.begin()+pos+n);pos+=n;return s;}
@@ -49,12 +49,13 @@ std::vector<uint8_t> encode(const State& s,uint32_t sequence) {
     for(int value:g.floatPool)p.number(value);
     for(const auto& player:g.players)p.number(player.profileIndex);
     for(const auto& event:g.history)p.number(static_cast<int>(event.kind));
-    out.number(8);out.number(sequence);out.number(static_cast<int>(p.b.size()));out.number(0);out.b.insert(out.b.end(),p.b.begin(),p.b.end());
+    for(const auto& event:g.history)p.number(event.turn);
+    out.number(9);out.number(sequence);out.number(static_cast<int>(p.b.size()));out.number(0);out.b.insert(out.b.end(),p.b.begin(),p.b.end());
     uint32_t sum=crc(out.b.data(),out.b.size());for(int i=0;i<4;++i)out.b[20+i]=(sum>>(8*i))&255;return out.b;
 }
 bool decode(const std::vector<uint8_t>& b,State& s,uint32_t& sequence) {
     if(b.size()<24||b.size()>65536||memcmp(b.data(),"CD3DSAVE",8)!=0)return false;
-    Reader r{b,8,true};int version=r.number();if(version<1||version>8)return false;r.version=version;uint32_t seq=r.number();int len=r.number();uint32_t sum=r.number();
+    Reader r{b,8,true};int version=r.number();if(version<1||version>9)return false;r.version=version;uint32_t seq=r.number();int len=r.number();uint32_t sum=r.number();
     if(len<0||static_cast<size_t>(len)!=b.size()-24)return false;
     auto checked=b;for(int i=20;i<24;++i)checked[i]=0;if(crc(checked.data(),checked.size())!=sum)return false;
     State next;int count=r.number();if(count<6||count>MaxStoredProfiles)return false;
@@ -108,6 +109,7 @@ bool decode(const std::vector<uint8_t>& b,State& s,uint32_t& sequence) {
         if(match>=0){p.profileIndex=match;p.color=next.profiles[match].color;}
     }
     if(version>=8)for(auto& e:g.history)e.kind=static_cast<HistoryKind>(r.number());
+    if(version>=9)for(auto& e:g.history)e.turn=r.number();
     if(!r.ok||r.pos!=b.size()||!validState(next))return false;
     s=next;sequence=seq;return true;
 }

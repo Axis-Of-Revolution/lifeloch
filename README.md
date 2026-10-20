@@ -1,8 +1,16 @@
-# Lifeloch — v0.10.1
+# Lifeloch — v0.10.2
 
 Native Nintendo 3DS game tracker with a standalone offline browser demo. The dark medieval serif interface, raster numerals, WUBRG themes, and existing player layouts remain the visual baseline.
 
 Open `dist/Lifeloch-v0.10-Demo.html`. It contains its artwork, font, audio synthesis, and scripts; no server or external assets are needed. It is a separate browser implementation, not a 3DS emulator. Existing browser saves retain their storage key.
+
+## v0.10.2 refinements
+
+- Restore the original pixel-art language for low-life flames: animated square-cell sprites inside the numerals, looping seamlessly every 2.4 seconds. Fire rises higher and burns brighter at or below one quarter of the configured starting life; defeat still takes precedence.
+- Miscellaneous counters and monarch/initiative sprites share the left-side commander width, with aligned baselines, matching card margins, and an unobstructed right history column.
+- The commander damage box's right border shares the same one-pixel vertical line as the life-history divider.
+- Rename the history page **Game history**. With turn tracking enabled, history events are grouped beneath explicit turn separators in both all-player and single-player views. Save format version 9 records event turns while retaining v1–v8 loading; old events are labeled *Earlier turns* rather than assigned invented turns.
+- Slightly pixelate the original home-screen illustration using algorithmic resampling only: downsample to 200×120 and enlarge with nearest-neighbor sampling. The original image remains unchanged at `assets/home-source.jpg`; browser and native apply the same pixel scale.
 
 ## v0.10.1 refinements
 

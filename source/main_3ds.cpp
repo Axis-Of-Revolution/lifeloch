@@ -60,7 +60,9 @@ public:
             auto* texture=static_cast<uint16_t*>(homeTexture.data);std::fill_n(texture,512*256,0);
             // Render at 320x192: 25% larger pixels on the 400x240 screen.
             // PICA stores each 8x8 tile in Morton order. Image row zero is at v=1.
-            for(unsigned y=0;y<192;++y)for(unsigned x=0;x<320;++x){unsigned morton=0;for(unsigned bit=0;bit<3;++bit){morton|=((x>>bit)&1)<<(2*bit);morton|=((y>>bit)&1)<<(2*bit+1);}unsigned offset=((y/8)*64+x/8)*64+morton;texture[offset]=deck::homeArtPixels[((y*5+2)/4)*400+(x*5+2)/4];}
+            for(unsigned y=0;y<192;++y)for(unsigned x=0;x<320;++x){unsigned morton=0;for(unsigned bit=0;bit<3;++bit){morton|=((x>>bit)&1)<<(2*bit);morton|=((y>>bit)&1)<<(2*bit+1);}unsigned offset=((y/8)*64+x/8)*64+morton;// Grid-lock the original 400x240 artwork to ~200x120 texels.
+                unsigned srcX=((x*5+2)/4)/2*2,srcY=((y*5+2)/4)/2*2;
+                texture[offset]=deck::homeArtPixels[std::min(srcY,239u)*400+std::min(srcX,399u)];}
             C3D_TexSetFilter(&homeTexture,GPU_NEAREST,GPU_NEAREST);C3D_TexSetWrap(&homeTexture,GPU_CLAMP_TO_EDGE,GPU_CLAMP_TO_EDGE);C3D_TexFlush(&homeTexture);
         }
     }

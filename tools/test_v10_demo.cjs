@@ -7,7 +7,7 @@ function element(name){if(!elems.has(name))elems.set(name,{innerHTML:'',value:''
 const deviceHandlers={};const docHandlers={};const document={addEventListener(k,fn){docHandlers[k]=fn},querySelector:element,querySelectorAll:()=>[],createElement:()=>({dataset:{},addEventListener(){}}),body:{insertAdjacentHTML(_,s){defs=s.match(/<defs>([\s\S]*?)<\/defs>/)[1]}}};
 let testRandom=0x4c4f4348;const randomMath=Object.create(Math);randomMath.random=()=>{testRandom^=testRandom<<13;testRandom^=testRandom>>>17;testRandom^=testRandom<<5;return (testRandom>>>0)/4294967296};
 const ctx={addEventListener(k,fn){deviceHandlers[k]=fn},document,localStorage:{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v)},window:null,Math:randomMath,Date:Clock,Number,String,Array,Object,JSON,encodeURIComponent,decodeURIComponent,structuredClone,setInterval(){},clearInterval(){},clearTimeout(){},requestAnimationFrame(fn){frame=fn},setTimeout(fn){fn()},confirm(){throw Error('Browser confirmations must not be used for reset')},console};ctx.window=ctx;
-vm.runInNewContext(html.split('<script>')[1].split('</script>')[0].replace('render();window.LifelochPreview=', 'window.testHelpers={hitSamples,isDefeated,historyText,historyInk,sensor:()=>({tilt:sensorTilt,yaw:sensorYaw,at:sensorAt}),teamDividers,panels,orientations,identityColors,diceMeshes,DiceBody,Qrotate,displayedLife,dieLabelHeight,trayShadow,Vadd,Vmul,Vdot,Vsub,Vcross,Vunit,navButtons:()=>navButtons};render();window.LifelochPreview='),ctx);const x=ctx.CommandDeckPreview,act=(a,...p)=>{x.act(a,p);if(a==='new'&&x.page==='newConfirm')x.act('new',[1])},svg=()=>element('#bottom').innerHTML;
+vm.runInNewContext(html.split('<script>')[1].split('</script>')[0].replace('render();window.LifelochPreview=', 'window.testHelpers={flamePixel,flameTiles,historyRows,hitSamples,isDefeated,historyText,historyInk,sensor:()=>({tilt:sensorTilt,yaw:sensorYaw,at:sensorAt}),teamDividers,panels,orientations,identityColors,diceMeshes,DiceBody,Qrotate,displayedLife,dieLabelHeight,trayShadow,Vadd,Vmul,Vdot,Vsub,Vcross,Vunit,navButtons:()=>navButtons};render();window.LifelochPreview='),ctx);const x=ctx.CommandDeckPreview,act=(a,...p)=>{x.act(a,p);if(a==='new'&&x.page==='newConfirm')x.act('new',[1])},svg=()=>element('#bottom').innerHTML;
 function buttons(){return [...svg().matchAll(/<g class="tap ([^"]*)" data-a="([^"]*)" data-p="([^"]*)"[^>]*aria-label="([^"]*)"[^>]*><rect x="([^"]*)" y="([^"]*)" width="([^"]*)" height="([^"]*)"/g)].map(m=>({disabled:m[1].includes('btn-disabled'),a:m[2],p:JSON.parse(decodeURIComponent(m[3])),label:m[4],r:m.slice(5).map(Number)}))}
 function click(a,p){const b=buttons().find(b=>b.a===a&&(p===undefined||JSON.stringify(b.p)===JSON.stringify(p)));assert(b,`Missing button ${a} ${p}`);element('#bottom').handlers.click({preventDefault(){},target:{closest(){return {dataset:{a:b.a,p:encodeURIComponent(JSON.stringify(b.p))},classList:{contains(){return b.disabled}}}}}})}
 function disjoint(){let bs=buttons();for(let i=0;i<bs.length;i++){let [a,b,w,h]=bs[i].r;assert(a>=0&&b>=0&&a+w<=320&&b+h<=240);for(let j=i+1;j<bs.length;j++){let [c,d,v,t]=bs[j].r;assert(Math.min(a+w,c+v)<=Math.max(a,c)||Math.min(b+h,d+t)<=Math.max(b,d),`${bs[i].a} overlaps ${bs[j].a}`)}}}
@@ -97,7 +97,20 @@ let changed=0;for(let seed=1;seed<16;seed++){let a=new ctx.testHelpers.DiceBody(
 for(let [n,heads] of [[4,2],[6,2],[6,3]])for(let layout=0;layout<2;layout++){let panels=h.panels(n,layout),lines=h.teamDividers(n,layout,heads);assert(lines.length>0);for(let [x,y,w,t] of lines)for(let [a,b,v,k] of panels)assert(Math.min(x+w,a+v)<=Math.max(x,a)||Math.min(y+t,b+k)<=Math.max(y,b),'team line enters a player card');}assert.equal(h.teamDividers(6,0,3).length,1);assert.equal(h.teamDividers(4,0,2).length,1);assert.equal(h.teamDividers(6,1,1).length,0);
 for(let [n,heads] of [[4,2],[6,2],[6,3]]){Object.assign(x.state.game.config,{players:n,heads});act('resume');let frames=[...svg().matchAll(/data-team-group="(\d+)" x="([^"]+)" y="([^"]+)" width="([^"]+)" height="([^"]+)"/g)];assert.equal(frames.length,n/heads);let playerButtons=buttons().filter(b=>b.a==='select');for(let f of frames){let team=+f[1],[x,y,w,h]=f.slice(2).map(Number);for(let i=team*heads;i<(team+1)*heads;i++){let [a,b,v,t]=playerButtons[i].r;assert(a>=x&&a+v<=x+w&&b>=y&&b+t<=y+h)}}}x.state.game.config.heads=1;
 assert(!html.includes("tx('HISTORY',histX"));
-assert(html.includes('flamePattern(\'fireHot\',true)')&&html.includes('dur=\"2.4s\"')); // Closed 2.4-second SVG flame motion.
+assert(html.includes('data-flame-pattern')&&html.includes('function flamePixel')); // Pixelated looping flame sprites.
+for(let hot of [false,true])for(let x of [1,8,16,23])for(let y of [1,9,16,19])assert.equal(h.flamePixel(hot,x,y,0),h.flamePixel(hot,x,y,2400));
+assert.notEqual(h.flameTiles(true,600),h.flameTiles(false,600));
+assert(!html.includes('animateTransform'));
+// A turn break is shown only when enabled, and existing unattributed records
+// are grouped under a single earlier-turn divider.
+{let current=x.state.game;Object.assign(current.config,{players:2,heads:1,turnEnabled:true});
+ current.history=[{team:0,player:0,delta:-1,after:39,type:'life',turn:0},{team:0,player:0,delta:-1,after:38,type:'life',turn:1}];
+ act('history');let page=svg();assert(page.includes('Game history')||html.includes("header('Game history')"));
+ assert(page.includes('TURN 1')||page.includes('md')); // glyph text uses path references
+ assert.equal(h.historyRows(current,0).filter(r=>r.divider!==undefined).length,2);
+ current.config.turnEnabled=false;assert.equal(h.historyRows(current,0).filter(r=>r.divider!==undefined).length,0);
+ act('resume');current.history=[];
+}
 // The history column reaches the badge band even when a commander box is present.
 {let current=x.state.game;Object.assign(current.config,{players:2,layout:0,commander:true,partners:true});
  current.history=Array.from({length:16},(_,i)=>({team:0,player:0,delta:-1,after:39-i,type:'life'}));x.render();

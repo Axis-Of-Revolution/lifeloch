@@ -13,7 +13,7 @@ bool Player::operator==(const Player& b) const {
 bool Game::operator==(const Game& b) const {
     return active==b.active && config==b.config && players==b.players && monarch==b.monarch && initiative==b.initiative && history==b.history && turn==b.turn && floatPool==b.floatPool;
 }
-bool LifeEvent::operator==(const LifeEvent& b) const {return team==b.team && player==b.player && before==b.before && after==b.after && source==b.source && slot==b.slot && seconds==b.seconds && kind==b.kind;}
+bool LifeEvent::operator==(const LifeEvent& b) const {return team==b.team && player==b.player && before==b.before && after==b.after && source==b.source && slot==b.slot && seconds==b.seconds && kind==b.kind && turn==b.turn;}
 bool validConfig(const Config& c) {
     if(!(c.players>=2 && c.players<=6 && c.life>=1 && c.life<=999 && c.heads>=1 && c.heads<=3 && c.players%c.heads==0 && c.players/c.heads>=2))return false;
     if(c.timerSeconds<60||c.timerSeconds>59940||c.startTurn<0||c.startTurn>9999||c.layout<0||c.layout>=(c.players==3?6:c.players==5?4:2)||c.themeColors<1||c.themeColors>31)return false;
@@ -73,7 +73,7 @@ bool validState(const State& s) {
     for(int n:g.floatPool)if(n<0||n>MaxCounter)return false;
     if(g.turn<0||g.turn>9999||g.timerRemaining<0||g.timerRemaining>59940||g.timerDeadline>4102444800ull)return false;
     if(g.history.size()>256)return false;
-    for(auto& e:g.history) if(e.team<0||e.team>=g.config.players/g.config.heads||e.player<0||e.player>=g.config.players||e.player/g.config.heads!=e.team||e.before<MinLife||e.before>MaxLife||e.after<MinLife||e.after>MaxLife||e.source<-1||e.source>=g.config.players||e.slot<0||e.slot>1||e.seconds>g.elapsed||(e.kind!=HistoryKind::Life&&e.kind!=HistoryKind::Poison)||(e.kind==HistoryKind::Poison&&(e.before<0||e.before>MaxCounter||e.after<0||e.after>MaxCounter||e.source!=-1)))return false;
+    for(auto& e:g.history) if(e.team<0||e.team>=g.config.players/g.config.heads||e.player<0||e.player>=g.config.players||e.player/g.config.heads!=e.team||e.before<MinLife||e.before>MaxLife||e.after<MinLife||e.after>MaxLife||e.source<-1||e.source>=g.config.players||e.slot<0||e.slot>1||e.seconds>g.elapsed||(e.kind!=HistoryKind::Life&&e.kind!=HistoryKind::Poison)||(e.turn < -1 || e.turn>9999)||(e.kind==HistoryKind::Poison&&(e.before<0||e.before>MaxCounter||e.after<0||e.after>MaxCounter||e.source!=-1)))return false;
     if(g.active)for(int i=0;i<g.config.players;++i) {
         const auto& lead=g.players[(i/g.config.heads)*g.config.heads];
         if(g.players[i].life!=lead.life || g.players[i].poison!=lead.poison)return false;
@@ -94,11 +94,11 @@ void Model::endGesture() {
         uint32_t seconds=merge?batchSeconds:g.elapsed;
         for(int i=0;i<g.config.players;i+=g.config.heads) if(baseline.players[i].life!=g.players[i].life) {
             if(g.history.size()==256)g.history.erase(g.history.begin());
-            g.history.push_back({i/g.config.heads,actor,baseline.players[i].life,g.players[i].life,damageSource,damageSlot,seconds});
+            g.history.push_back({i/g.config.heads,actor,baseline.players[i].life,g.players[i].life,damageSource,damageSlot,seconds,HistoryKind::Life,g.turn});
         }
         for(int i=0;i<g.config.players;i+=g.config.heads) if(baseline.players[i].poison!=g.players[i].poison) {
             if(g.history.size()==256)g.history.erase(g.history.begin());
-            g.history.push_back({i/g.config.heads,actor,baseline.players[i].poison,g.players[i].poison,-1,0,seconds,HistoryKind::Poison});
+            g.history.push_back({i/g.config.heads,actor,baseline.players[i].poison,g.players[i].poison,-1,0,seconds,HistoryKind::Poison,g.turn});
         }
         if(!merge){if(past.size()==64)past.erase(past.begin());past.push_back(before);}
         future.clear();
