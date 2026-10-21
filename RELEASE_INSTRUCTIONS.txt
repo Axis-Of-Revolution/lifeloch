@@ -1,4 +1,4 @@
-Lifeloch v0.10.8
+Lifeloch v0.10.9
 
 Open dist/Lifeloch-v0.10-Demo.html for the offline browser demo.
 README.md describes features, controller inputs, physics, saves and build commands.

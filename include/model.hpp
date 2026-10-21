@@ -59,7 +59,7 @@ struct State {
     Game game;
     bool light = false; // Legacy save field; appearance now uses themeColors.
     int themeColors = 31; // W U B R G bits, one to five selected.
-    int themeSpeedStep = 0; // 0..4 means 1x, 1.5x, 2x, 2.5x, 3x; global theme preference.
+    float themeSpeed = 1.0f; // Continuous 1x..2x globally persisted orbital speed.
 };
 enum class Counter { Life, Poison, Energy, Experience, Commander, Turn };
 bool validConfig(const Config& c);

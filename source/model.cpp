@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cctype>
 #include <limits>
+#include <cmath>
 
 namespace deck {
 bool Config::operator==(const Config& b) const {
@@ -55,7 +56,7 @@ State defaults() {
     return s;
 }
 bool validState(const State& s) {
-    if(s.themeColors<1||s.themeColors>31||s.themeSpeedStep<0||s.themeSpeedStep>4)return false;
+    if(s.themeColors<1||s.themeColors>31||!std::isfinite(s.themeSpeed)||s.themeSpeed<1.f||s.themeSpeed>2.f)return false;
     if(s.profiles.size()<6 || s.profiles.size()>MaxStoredProfiles || s.presets.size()>MaxPresets || !validConfig(s.setup) || !validConfig(s.game.config)) return false;
     for(const auto& p:s.profiles) if(p.name.empty() || cleanName(p.name)!=p.name || p.color<0 || p.color>=10) return false;
     for(const auto& p:s.presets) if(p.name.empty() || cleanName(p.name)!=p.name || !validConfig(p.config)) return false;

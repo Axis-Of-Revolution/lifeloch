@@ -80,7 +80,7 @@ private:
     Renderer* draw=nullptr;
     int viewport=400;
     int listPage=0,pickSeat=-1,profile=0,historyPage=0;
-    bool historyAll=true,historyDragging=false;
+    bool historyAll=true,historyDragging=false,themeSliderDragging=false;
     float historyDragY=0,scrollRemainder=0;
     Page returnPage=Page::Home;
     Command confirming,held,feedback;

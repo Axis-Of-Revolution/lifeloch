@@ -1,9 +1,13 @@
-LIFELOCH v0.10.8 — SOURCE AND BROWSER DEMO
+LIFELOCH v0.10.9 — SOURCE AND BROWSER DEMO
 
 CIA: NOT BUILT. No native executable is included.
 Native SDK, cross-compiler and packaging tools are unavailable.
 
 VERIFIED
+- Continuous 1.00–2.00x theme-speed rail (touch dragging and ± controller buttons), save v11 migration from v10 five-notch setting
+- Marbled, wavy theme boundaries: native C++ and browser raster sampling with shared motion equations and 50ms phase updates
+- Wave effect on original artwork: 8-second loop and 1.875px amplitude
+- Monarch/initiative gain uses life-gain history ink; loss uses life-loss history ink
 - Theme submenu 5-notch global 1x–3x rotation-speed slider with native save v10 and browser local persistence
 - Original home art wave 50% faster (12-second instead of 18-second cycle); same displacement
 - Disabled turn tracking logs turn 0; older missing turns displayed as 0

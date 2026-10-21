@@ -50,13 +50,13 @@ std::vector<uint8_t> encode(const State& s,uint32_t sequence) {
     for(const auto& player:g.players)p.number(player.profileIndex);
     for(const auto& event:g.history)p.number(static_cast<int>(event.kind));
     for(const auto& event:g.history)p.number(event.turn);
-    p.number(s.themeSpeedStep);
-    out.number(10);out.number(sequence);out.number(static_cast<int>(p.b.size()));out.number(0);out.b.insert(out.b.end(),p.b.begin(),p.b.end());
+    p.number(static_cast<int>(s.themeSpeed*1000.f+.5f));
+    out.number(11);out.number(sequence);out.number(static_cast<int>(p.b.size()));out.number(0);out.b.insert(out.b.end(),p.b.begin(),p.b.end());
     uint32_t sum=crc(out.b.data(),out.b.size());for(int i=0;i<4;++i)out.b[20+i]=(sum>>(8*i))&255;return out.b;
 }
 bool decode(const std::vector<uint8_t>& b,State& s,uint32_t& sequence) {
     if(b.size()<24||b.size()>65536||memcmp(b.data(),"CD3DSAVE",8)!=0)return false;
-    Reader r{b,8,true};int version=r.number();if(version<1||version>10)return false;r.version=version;uint32_t seq=r.number();int len=r.number();uint32_t sum=r.number();
+    Reader r{b,8,true};int version=r.number();if(version<1||version>11)return false;r.version=version;uint32_t seq=r.number();int len=r.number();uint32_t sum=r.number();
     if(len<0||static_cast<size_t>(len)!=b.size()-24)return false;
     auto checked=b;for(int i=20;i<24;++i)checked[i]=0;if(crc(checked.data(),checked.size())!=sum)return false;
     State next;int count=r.number();if(count<6||count>MaxStoredProfiles)return false;
@@ -111,7 +111,8 @@ bool decode(const std::vector<uint8_t>& b,State& s,uint32_t& sequence) {
     }
     if(version>=8)for(auto& e:g.history)e.kind=static_cast<HistoryKind>(r.number());
     if(version>=9)for(auto& e:g.history)e.turn=r.number();
-    if(version>=10)next.themeSpeedStep=r.number();
+    if(version>=11)next.themeSpeed=r.number()/1000.f;
+    else if(version==10)next.themeSpeed=std::clamp(1.f+.5f*r.number(),1.f,2.f);
     if(!r.ok||r.pos!=b.size()||!validState(next))return false;
     s=next;sequence=seq;return true;
 }

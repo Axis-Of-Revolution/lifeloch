@@ -83,7 +83,7 @@ void App::syncLifeMotion(){
 void App::render(Renderer& r){
     syncLifeMotion();
     bool configuring=page==Page::Rules||page==Page::Seats||(page==Page::Layout&&!editingGameLayout)||page==Page::Options||page==Page::Presets||(page==Page::Theme&&themeReturn==Page::Rules);
-    ThemeRenderer themed(r,configuring?model.state.setup.themeColors:model.state.themeColors,now,model.state.themeSpeedStep);
+    ThemeRenderer themed(r,configuring?model.state.setup.themeColors:model.state.themeColors,now,model.state.themeSpeed);
     draw=&themed;buttons.clear();
     p=Palette{0x101b1c,0x19292a,0x263a3b,0xf0f2df,0xa4b6af,0x3b5350,0xc5dc9b,0x17251e,0x82d8a2,0xfa9d8d};
     viewport=400;themed.screen(0);themed.box({0,0,400,240},p.bg);top();
@@ -305,7 +305,7 @@ void App::historyView(){
         if(g.config.turnEnabled)label(number(std::max(0,e.turn)),turnX,y+4,11,p.ink,Align::Left,50);
         bool roleEvent=e.kind==HistoryKind::Monarch||e.kind==HistoryKind::Initiative;
         std::string change=roleEvent?(e.before==1&&e.after==0?"Loses role":"Takes role"):(e.kind==HistoryKind::Poison?"P ":"")+signedNumber(e.after-e.before)+"→"+number(e.after);
-        Color ink=roleEvent?p.accent:e.kind==HistoryKind::Poison?0xc48cf1:e.after>e.before?p.good:p.bad;
+        Color ink=roleEvent?(e.after>e.before?p.good:p.bad):e.kind==HistoryKind::Poison?0xc48cf1:e.after>e.before?p.good:p.bad;
         label(change,changeX,y+2,roleEvent?10:12,ink,Align::Left,g.config.turnEnabled?104:121);
         std::string description=e.kind==HistoryKind::Monarch?"Monarch":e.kind==HistoryKind::Initiative?"Initiative":e.kind==HistoryKind::Poison?"Poison":e.source>=0?playerAbbreviation(g.players[e.source],e.source)+" CMD "+(e.slot?"B":"A"):"Life";
         label(description,detailX,y+4,9,p.muted,Align::Right,72);
@@ -486,16 +486,21 @@ void App::bottom(){
             button(tile,names[j],{Action::ThemeColor,j},active,true,false,11);
             draw->box({tile.x+8,116,40,3},magicColor(j));
         }
-        label("Rotation speed",12,143,12,p.ink,Align::Left,210);
-        const char* marks[]={"1", "1.5", "2", "2.5", "3"};
-        draw->box({40,172,240,2},p.line);
-        for(int j=0;j<5;++j){
-            const float x=40.f+j*60;const bool chosen=s.themeSpeedStep==j;
-            draw->box({x-2,169,4,8},chosen?p.accent:p.muted);
-            draw->box({x-(chosen?6.f:4.f),172-(chosen?6.f:4.f),chosen?12.f:8.f,chosen?12.f:8.f},chosen?p.accent:p.raised);
-            label(marks[j],x,188,10,chosen?p.ink:p.muted,Align::Center,44);
-            buttons.push_back({{x-24,158,48,44},{Action::ThemeSpeed,j},std::string("Rotation speed ")+marks[j]+"x",true,false});
-        }
+        label("Rotation speed",12,143,12,p.ink,Align::Left,200);
+        char speedLabel[16];std::snprintf(speedLabel,sizeof(speedLabel),"%.2fx",s.themeSpeed);
+        label(speedLabel,292,143,14,p.accent,Align::Right,62);
+        // A framed, continuous engraved rail with a single brass lozenge.
+        draw->box({31,158,258,42},p.line);
+        draw->box({32,159,256,40},p.panel);
+        draw->box({49,174,222,4},p.muted);
+        float slideX=49.f+222.f*(s.themeSpeed-1.f);
+        draw->box({49,174,slideX-49.f,4},p.accent);
+        draw->box({slideX-5,168,10,16},p.raised);
+        draw->box({slideX-3,170,6,12},p.accent);
+        label("1x",49,186,10,p.muted,Align::Center,32);
+        label("2x",271,186,10,p.muted,Align::Center,32);
+        button({12,163,19,29},"-",{Action::ThemeSpeed,-1},false,true,false,11);
+        button({289,163,19,29},"+",{Action::ThemeSpeed,1},false,true,false,11);
         button({12,208,296,28},"Done",{Action::Back},true,true,false,13);break;}
     case Page::Clock:case Page::GameTrackers:
         header("Game settings");
@@ -568,7 +573,7 @@ void App::dispatch(Command c){
         int& mask=themeReturn==Page::Rules?s.setup.themeColors:s.themeColors;
         int next=mask^(1<<c.a);if(next){mask=next;if(g.active&&themeReturn==Page::Menu)g.config.themeColors=next;model.touch();}
         }break;
-    case Action::ThemeSpeed:if(c.a>=0&&c.a<5&&s.themeSpeedStep!=c.a){s.themeSpeedStep=c.a;model.touch();}break;
+    case Action::ThemeSpeed:{float next=std::clamp(s.themeSpeed+.025f*c.a,1.f,2.f);if(next!=s.themeSpeed){s.themeSpeed=next;model.touch();}break;}
     case Action::LinkLife:g.config.linkLife=!g.config.linkLife;model.touch();break;
     case Action::Players:editingGameLayout=false;page=Page::Layout;break;
     case Action::GameLayout:if(g.active){editingGameLayout=true;page=Page::Layout;}break;
@@ -656,6 +661,10 @@ void App::lifeSound(int delta,int kind){
 }
 void App::pointerDown(float x,float y,uint64_t ms){
     pointerUp();now=ms;focusVisible=false;model.setInputTime(ms);notice.clear();
+    if(page==Page::Theme&&x>=32&&x<=288&&y>=158&&y<=200&&!modalOpen()){
+        themeSliderDragging=true;float next=1.f+std::clamp((x-49.f)/222.f,0.f,1.f);
+        if(next!=model.state.themeSpeed){model.state.themeSpeed=next;model.touch();}return;
+    }
     if(page==Page::History&&y>=86&&y<205&&!modalOpen()){historyDragging=true;historyDragY=y;scrollRemainder=0;return;}
     for(auto it=buttons.rbegin();it!=buttons.rend();++it)if(it->enabled&&it->rect.contains(x,y)){
         Button b=*it;held=b.command;heldRect=b.rect;holding=true;repeat=b.repeat;keyboardHold=false;nextRepeat=ms+450;
@@ -663,8 +672,8 @@ void App::pointerDown(float x,float y,uint64_t ms){
         dispatch(held);break;
     }
 }
-void App::pointerMove(float x,float y){if(historyDragging){scrollHistory(historyDragY-y);historyDragY=y;return;}if(holding&&!keyboardHold&&!heldRect.contains(x,y))pointerUp();}
-void App::pointerUp(){historyDragging=false;if(holding){model.endGesture();holding=false;repeat=false;keyboardHold=false;held={};}}
+void App::pointerMove(float x,float y){if(themeSliderDragging){float next=1.f+std::clamp((x-49.f)/222.f,0.f,1.f);if(next!=model.state.themeSpeed){model.state.themeSpeed=next;model.touch();}return;}if(historyDragging){scrollHistory(historyDragY-y);historyDragY=y;return;}if(holding&&!keyboardHold&&!heldRect.contains(x,y))pointerUp();}
+void App::pointerUp(){themeSliderDragging=false;historyDragging=false;if(holding){model.endGesture();holding=false;repeat=false;keyboardHold=false;held={};}}
 void App::tick(uint64_t ms){
     now=ms;model.setInputTime(ms);
     auto& game=model.state.game;

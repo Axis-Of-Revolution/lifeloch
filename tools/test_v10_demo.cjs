@@ -3,7 +3,7 @@ const root=path.resolve(__dirname,'..'),html=fs.readFileSync(root+'/dist/Lifeloc
 let now=1800000000000,defs='',frame;
 class Clock extends Date{constructor(...args){super(...(args.length?args:[now]))}static now(){return now}}
 const elems=new Map(),store=new Map(),rows=Array.from({length:18},(_,j)=>({dataset:{skullRow:j},setAttribute(k,v){this[k]=v}}));
-function element(name){if(!elems.has(name))elems.set(name,{innerHTML:'',value:'',hidden:false,handlers:{},addEventListener(k,v){this.handlers[k]=v},appendChild(){},querySelector(){return null},focus(){},select(){},querySelectorAll(){return rows},classList:{add(){},remove(){}}});return elems.get(name)}
+function element(name){if(!elems.has(name))elems.set(name,{innerHTML:'',value:'',hidden:false,handlers:{},addEventListener(k,v){let prior=this.handlers[k];this.handlers[k]=prior?(...args)=>{prior(...args);v(...args)}:v},appendChild(){},querySelector(){return null},focus(){},select(){},querySelectorAll(){return rows},classList:{add(){},remove(){}}});return elems.get(name)}
 const deviceHandlers={};const docHandlers={};const document={addEventListener(k,fn){docHandlers[k]=fn},querySelector:element,querySelectorAll:()=>[],createElement:()=>({dataset:{},addEventListener(){}}),body:{insertAdjacentHTML(_,s){defs=s.match(/<defs>([\s\S]*?)<\/defs>/)[1]}}};
 let testRandom=0x4c4f4348;const randomMath=Object.create(Math);randomMath.random=()=>{testRandom^=testRandom<<13;testRandom^=testRandom>>>17;testRandom^=testRandom<<5;return (testRandom>>>0)/4294967296};
 const ctx={addEventListener(k,fn){deviceHandlers[k]=fn},document,localStorage:{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v)},window:null,Math:randomMath,Date:Clock,Number,String,Array,Object,JSON,encodeURIComponent,decodeURIComponent,structuredClone,setInterval(){},clearInterval(){},clearTimeout(){},requestAnimationFrame(fn){frame=fn},setTimeout(fn){fn()},confirm(){throw Error('Browser confirmations must not be used for reset')},console};ctx.window=ctx;
@@ -11,14 +11,20 @@ vm.runInNewContext(html.split('<script>')[1].split('</script>')[0].replace('rend
 function buttons(){return [...svg().matchAll(/<g class="tap ([^"]*)" data-a="([^"]*)" data-p="([^"]*)"[^>]*aria-label="([^"]*)"[^>]*><rect x="([^"]*)" y="([^"]*)" width="([^"]*)" height="([^"]*)"/g)].map(m=>({disabled:m[1].includes('btn-disabled'),a:m[2],p:JSON.parse(decodeURIComponent(m[3])),label:m[4],r:m.slice(5).map(Number)}))}
 function click(a,p){const b=buttons().find(b=>b.a===a&&(p===undefined||JSON.stringify(b.p)===JSON.stringify(p)));assert(b,`Missing button ${a} ${p}`);element('#bottom').handlers.click({preventDefault(){},target:{closest(){return {dataset:{a:b.a,p:encodeURIComponent(JSON.stringify(b.p))},classList:{contains(){return b.disabled}}}}}})}
 function disjoint(){let bs=buttons();for(let i=0;i<bs.length;i++){let [a,b,w,h]=bs[i].r;assert(a>=0&&b>=0&&a+w<=320&&b+h<=240);for(let j=i+1;j<bs.length;j++){let [c,d,v,t]=bs[j].r;assert(Math.min(a+w,c+v)<=Math.max(a,c)||Math.min(b+h,d+t)<=Math.max(b,d),`${bs[i].a} overlaps ${bs[j].a}`)}}}
-// Five tappable slider notches preserve a global speed selection in browser
-// saves without changing the selected WUBRG color mask.
-act('theme');for(let notch=0;notch<5;notch++){
- click('themeSpeed',[notch]);assert.equal(x.state.themeSpeedStep,notch);
- assert.equal(JSON.parse(store.get('command-deck-v05')).themeSpeedStep,notch);
- assert.equal(buttons().filter(b=>b.a==='themeSpeed').length,5);
-}
-click('themeSpeed',[0]);click('back');
+// Continuous 1..2x theme slider: small arrows, drag-position mapping, save.
+act('theme');assert.equal(x.state.themeSpeed,1);
+assert.equal(buttons().filter(b=>b.a==='themeSpeed').length,2);
+click('themeSpeed',[1]);assert(Math.abs(x.state.themeSpeed-1.025)<1e-6);
+click('themeSpeed',[-1]);assert.equal(x.state.themeSpeed,1);
+x.act('themeSpeed',[42]);assert.equal(x.state.themeSpeed,2);
+assert.equal(JSON.parse(store.get('command-deck-v05')).themeSpeed,2);
+assert(!buttons().some(b=>b.a==='themeSpeed'&&b.p[0]>1));
+// Drag the rail directly in touchscreen coordinates, retaining fractional speed.
+element('#bottom').handlers.pointerdown({offsetX:160,offsetY:173,target:{closest(){return null}},preventDefault(){},pointerId:1});
+element('#bottom').handlers.pointermove({offsetX:202,offsetY:173,target:{closest(){return null}},preventDefault(){},pointerId:1});
+docHandlers.pointerup?.({});
+assert(x.state.themeSpeed>1.68&&x.state.themeSpeed<1.70);
+click('back');
 click('new');click('layouts');click('players',[3]);assert.equal(x.state.setup.layout,2);assert(x.state.setup.commander);click('players',[5]);assert.equal(x.state.setup.layout,1);assert(x.state.setup.commander);click('players',[4]);click('back');click('start');assert(!buttons().some(b=>b.a==='turn'||b.p[0]==='gameTurn'));act('turn',1);assert.equal(x.state.game.turn,0);assert(!x.state.game.config.turnEnabled);
 // New game requires confirmation as soon as history exists, not at game start.
 const priorGame=x.state.game,priorLife=priorGame.players[0].life;priorGame.history.push({team:0,player:0,after:priorLife-1,delta:-1,type:'life'});const priorHistory=priorGame.history.length;

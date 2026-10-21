@@ -1,6 +1,6 @@
 # Lifeloch — proposed v0.10.6 player-panel review
 
-**Provisional review only — not committed to GitHub.** This build derives from the v0.10.5 preview.
+**Historical layout-design record.** This file records the earlier v0.10.6 mockup decisions; see README for current release changes.
 
 ## Six-player side sections
 

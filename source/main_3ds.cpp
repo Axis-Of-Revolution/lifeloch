@@ -72,12 +72,12 @@ public:
     void homeArtwork(deck::Rect area)override{
         if(!homeReady)return;
         constexpr int bands=24;
-        const float phase=6.28318530718f*float(frameMs%12000)/12000.f;
+        const float phase=6.28318530718f*float(frameMs%8000)/8000.f;
         for(int i=0;i<bands;++i){
             float sy=float(i)*192/bands,sh=192.f/bands;
             Tex3DS_SubTexture slice{320,static_cast<uint16_t>(sh),0.f,1.f-sy/256.f,320.f/512.f,1.f-(sy+sh)/256.f};
             // Two-pixel overscan prevents transparent edge gaps while the image waves.
-            float motion=1.25f*std::sin(phase+float(i)*.20f);
+            float motion=1.875f*std::sin(phase+float(i)*.20f);
             C2D_DrawImageAt({&homeTexture,&slice},area.x-2.f+motion,area.y+area.h*i/bands,0,nullptr,(area.w+4.f)/320.f,area.h/(bands*sh));
         }
     }

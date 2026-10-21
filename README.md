@@ -1,8 +1,15 @@
-# Lifeloch — v0.10.8
+# Lifeloch — v0.10.9
 
 Native Nintendo 3DS game tracker with a standalone offline browser demo. The dark medieval serif interface, raster numerals, WUBRG themes, and existing player layouts remain the visual baseline.
 
 Open `dist/Lifeloch-v0.10-Demo.html`. It contains its artwork, font, audio synthesis, and scripts; no server or external assets are needed. It is a separate browser implementation, not a 3DS emulator. Existing browser saves retain their storage key.
+
+## v0.10.9 fluid-marble theme motion
+
+- Theme now has a **continuous touchscreen slider from 1.00× to 2.00×** rather than five notches. The in-app rail is framed to match the existing dark medieval controls; adjacent − and + buttons move by 0.025× for D-pad/controller access. The native setting is preserved to one-thousandth precision in save format **v11**, with migration from the former v10 notches (values above 2× are capped at 2×). Browser local saves migrate in place.
+- The background uses a more pronounced flowing **hydrodipped / marbled color-boundary field**: wavy, multi-scale coordinate distortion and a narrow transition between the two nearest rotating pigments, replacing the previous inverse-distance blurred blend. Native and browser share the boundary and distortion math. The browser uses a smooth 160×120 rasterized bitmap rather than square SVG tiles, updated at 50ms intervals (instead of 750ms); 3DS gradient patches and cached wave samples remain GPU-friendly, but console frame rate needs hardware validation.
+- The original home artwork remains unchanged: the horizontal wave now loops every **8 seconds** at **1.5× the previous amplitude** (1.875px vs 1.25px), in both implementations.
+- Taking monarch/initiative is now colored like life gain, and losing either role like life loss, within the Game history view. History recording and undo/redo behavior are unchanged.
 
 ## v0.10.8 adjustable theme motion
 

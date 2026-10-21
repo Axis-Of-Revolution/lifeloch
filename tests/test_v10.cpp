@@ -21,18 +21,25 @@ void render(App&a){Capture r;a.render(r);for(size_t i=0;i<a.buttons.size();i++)f
 std::string key(Command c){return std::to_string(int(c.action))+":"+std::to_string(c.a)+":"+std::to_string(c.b);}
 void reachable(App&a){render(a);auto buttons=a.buttons;if(!a.buttonNavigation())a.keyDown(Key::Select,100);std::set<std::string> seen;for(size_t i=0;i<buttons.size()+2;i++){a.keyDown(Key::Right,110+i);a.keyUp();render(a);seen.insert(key(a.focusedCommand()));}for(auto b:buttons)if(b.enabled)assert(seen.count(key(b.command)));}
 int main(){
- // Theme rotation is a global, persisted five-notch preference; old v9 saves
- // load at 1x.  Native and browser use the same orbital phase multiplier.
+ // Continuous preference is persisted at millix precision, with migration
+ // from the v10 five-notch setting and v9 defaults.
  {App speeds;speeds.dispatch({Action::Theme});render(speeds);
-  assert(std::count_if(speeds.buttons.begin(),speeds.buttons.end(),[](auto b){return b.command.action==Action::ThemeSpeed;})==5);
-  for(int i=0;i<5;++i){speeds.dispatch({Action::ThemeSpeed,i});assert(speeds.model.state.themeSpeedStep==i);
-      State recovered;uint32_t seq=0;assert(decode(encode(speeds.model.state),recovered,seq)&&recovered.themeSpeedStep==i);}
-  assert(themeSample(31,.32f,.23f,400.f/240,25000,0)!=themeSample(31,.32f,.23f,400.f/240,25000,4));
-  auto v9=encode(speeds.model.state);v9.resize(v9.size()-4);
-  auto put=[&](int at,uint32_t value){for(int i=0;i<4;++i)v9[at+i]=(value>>(i*8))&255;};
-  put(8,9);put(16,static_cast<uint32_t>(v9.size()-24));put(20,0);
-  uint32_t checksum=0xffffffff;for(auto byte:v9){checksum^=byte;for(int i=0;i<8;++i)checksum=(checksum>>1)^(0xedb88320u&(0u-(checksum&1)));}put(20,~checksum);
-  State recovered;uint32_t seq=0;assert(decode(v9,recovered,seq)&&recovered.themeSpeedStep==0);
+  auto sliders=std::count_if(speeds.buttons.begin(),speeds.buttons.end(),[](auto b){return b.command.action==Action::ThemeSpeed;});
+  assert(sliders==2);
+  for(int k=0;k<18;++k){speeds.dispatch({Action::ThemeSpeed,1});}
+  assert(speeds.model.state.themeSpeed>1.4f&&speeds.model.state.themeSpeed<1.5f);
+  speeds.pointerDown(160,174,1000);speeds.pointerMove(270,174);speeds.pointerUp();
+  assert(speeds.model.state.themeSpeed>.99f&&speeds.model.state.themeSpeed<=2.f);
+  auto encoded=encode(speeds.model.state);State recovered;uint32_t seq=0;
+  assert(decode(encoded,recovered,seq)&&std::abs(recovered.themeSpeed-speeds.model.state.themeSpeed)<.0015f);
+  assert(themeSample(31,.32f,.23f,400.f/240,25000,1.f)!=themeSample(31,.32f,.23f,400.f/240,25000,2.f));
+  auto v10=encode(speeds.model.state);auto put=[&](std::vector<uint8_t>& target,int at,uint32_t value){for(int i=0;i<4;++i)target[at+i]=(value>>(i*8))&255;};
+  put(v10,8,10);put(v10,static_cast<int>(v10.size())-4,2);put(v10,20,0);
+  uint32_t checksum=0xffffffff;for(auto byte:v10){checksum^=byte;for(int i=0;i<8;++i)checksum=(checksum>>1)^(0xedb88320u&(0u-(checksum&1)));}put(v10,20,~checksum);
+  assert(decode(v10,recovered,seq)&&recovered.themeSpeed==2.f);
+  auto v9=v10;v9.resize(v9.size()-4);put(v9,8,9);put(v9,16,static_cast<uint32_t>(v9.size()-24));put(v9,20,0);
+  checksum=0xffffffff;for(auto byte:v9){checksum^=byte;for(int i=0;i<8;++i)checksum=(checksum>>1)^(0xedb88320u&(0u-(checksum&1)));}put(v9,20,~checksum);
+  assert(decode(v9,recovered,seq)&&recovered.themeSpeed==1.f);
  }
  // Newly written player profile names are capped at eight UTF-8 codepoints.
  {Model p;assert(p.addProfile("CassandraLong"));assert(p.state.profiles.back().name=="Cassandr");
