@@ -1,64 +1,20 @@
-LIFELOCH v0.10.9 — SOURCE AND BROWSER DEMO
+LIFELOCH v0.10.10 — SOURCE AND OFFLINE HTML DEMO
 
-CIA: NOT BUILT. No native executable is included.
-Native SDK, cross-compiler and packaging tools are unavailable.
+NATIVE CIA: NOT BUILT OR HARDWARE-VERIFIED.
+DevkitARM / libctru / citro2d / makerom / bannertool are not available in
+this environment. An installable CIA cannot yet be claimed.
 
 VERIFIED
-- Continuous 1.00–2.00x theme-speed rail (touch dragging and ± controller buttons), save v11 migration from v10 five-notch setting
-- Marbled, wavy theme boundaries: native C++ and browser raster sampling with shared motion equations and 50ms phase updates
-- Wave effect on original artwork: 8-second loop and 1.875px amplitude
-- Monarch/initiative gain uses life-gain history ink; loss uses life-loss history ink
-- Theme submenu 5-notch global 1x–3x rotation-speed slider with native save v10 and browser local persistence
-- Original home art wave 50% faster (12-second instead of 18-second cycle); same displacement
-- Disabled turn tracking logs turn 0; older missing turns displayed as 0
-- Monarch and initiative loss/transfer events appear in Game history with undo/redo and save migration
-- Colored/gradient player-name offset shadows on both screens, initials shadowed instead of stroked
-- Each right-side tracker value and role icon right-justified within its allocated cell
-- 6-seat side sections: two compact sides and four regular-format central panels
-- 8-point side-name legibility floor, colored/gradient names, centered 2×2 commander text
-- 6-seat side sections: two compact sides and four regular-format central panels
-- 8-point side-name legibility floor, colored/gradient names, centered 2×2 commander text
-- Oldest-first history tables with conditional Turn #/? column, touch drag, wheel and pixel arrow buttons, Undo/Redo
-- Drop shadow and thin outline on native/demo life totals, lighter defeated-life ink
-- Animated WUBRG theme orbit/wavering boundaries with cached native/browser sampling
-- Periodic 12-second scanline ripple on original pixelated home artwork
-- Four-player commander/history/counter band alignment; square-cell flame loop and critical threshold
-- Game history chronological Turn # column, with version 10 global theme-speed setting and old-save migration
-- Algorithmic 200x120-to-400x240 nearest-neighbor home artwork pixelation
-- Seamless 2.4-second native flame loop and layered tongue fill in the standalone demo
-- Harder soft-limited critical-hit PCM synthesized from corresponding native/browser formulas
-- Compact commander strip and taller history, including narrow player configurations
-- New-game confirmation with existing history and default commander for 3+ players
-- Uniform outlined initials; overlapping team-divider joins
-- Reversing life inputs and poison inputs batch as net changes, with purple poison history
-- Small thud / critical sword PCM, poison sound thresholds, touch/key button flashes
-- Bidirectional yaw wakes all seven settled bodies; leveling/stopping permits re-settling
-- Native host arithmetic, persistence, themes, sound and layout regressions
-- Controller focus across all enabled menu operations, including duplicate Back targets
-- Live partners/commander toggles, fixed-count layout changes and profile assignment
-- Immediate life arithmetic with rolling display; two-digit minimum sizing
-- Team defeat from one lethal commander; 10 poison individually / 15 in either Giant mode
-- Upper history without heading; larger centered arrows; bounded lower history
-- Profile creation color selection and saved-profile propagation through undo/save
-- All live settings on one screen; all-five-color new-game default
-- Team dividers for each 4/6-player Giant layout and grouped lower player controls
-- Dice label fit, changing silhouette shadows, post-settle tilt and re-settling
-- Browser click/key logic in a Node VM; 248 layout/density cases
-- 840 native rigid-body rolls: max 2.13s; 20 cocked landings correctly withheld a result
-- Tilt changes the trajectory and can change the result of an identical launch
-- Save format 10 roundtrip and legacy fixture migration
-- Native and demo screen renders, home art, 16 layouts and physical roll frames
-- ZIP integrity and standalone demo/source identity
+- Native host model/UI tests, v0.10 layout tests, and legacy v3/v4 migration suites
+- Browser logic and all 248 automated layout combinations
+- Real Chromium mouse-click persistence during 50 ms theme animation
+- Real Chromium continuous theme slider drag with no script exceptions
+- Lower-screen controls stay mounted while only the SVG background updates
+- Speed changes integrate orbital time continuously rather than resetting phase
+- Original home artwork uses a 6% overscan, eight-second pixelated wave
+- README installation/usage summary, CHANGELOG, and LLM-CONTEXT documentation
 
-PENDING
-- Nintendo 3DS hardware build and performance profiling; actual console audiovisual parity
-
-BROWSER VERIFIED
-- Headless Chromium rendered 4-player game and chronological history page; browser logic suite passed.
-- 3DS compilation, install, GPU texture, accelerometer/gyroscope axes and feel, audio, keyboard,
-  SD persistence, suspend/resume and performance tests
-
-
-Current home text and supplied artwork replace the old placeholders.
-
-Upper panels: right-aligned life (except the compact six-seat side-sections), left-aligned history, two-thirds-width trackers and fixed bottom 2x2 commander grid, eight-character names.
+NOT YET VERIFIED
+- Native devkitARM compilation, CIA packaging, installation or launch
+- Performance/GPU/audio, SD save integrity, motion controls and suspend/resume
+  on original Nintendo 3DS or New Nintendo 3DS hardware

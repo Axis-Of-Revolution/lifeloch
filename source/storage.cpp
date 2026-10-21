@@ -33,6 +33,8 @@ std::vector<uint8_t> read(const std::string& path,bool& exists) {
     rewind(f);std::vector<uint8_t> b(static_cast<size_t>(n));size_t got=fread(b.data(),1,b.size(),f);fclose(f);if(got!=b.size())return {};return b;
 }
 }
+// Binary format is versioned: changes here must be paired with decode(),
+// migration fixtures, and round-trip tests before shipping a new release.
 std::vector<uint8_t> encode(const State& s,uint32_t sequence) {
     if(!validState(s))return {};
     Writer p;p.number(static_cast<int>(s.profiles.size()));

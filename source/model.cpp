@@ -81,6 +81,8 @@ bool validState(const State& s) {
     }
     return g.monarch>=-1 && g.monarch<g.config.players && g.initiative>=-1 && g.initiative<g.config.players;
 }
+// A single press/hold can represent one undoable net life/poison change.
+// Finalize the gesture before switching actor, counter kind or source.
 void Model::beginGesture() { if(!gesture) { before=state.game; gesture=true;gestureChanged=false; actor=0; damageSource=-1; damageSlot=0;gestureKind=Counter::Life; } }
 void Model::endGesture() {
     if(!gesture) return;
@@ -165,6 +167,8 @@ bool Model::change(int i,Counter kind,int delta,int source,int slot) {
     for(int k=first;k<first+g.config.heads;++k){g.players[k].life=p.life;g.players[k].poison=p.poison;}
     touch(); if(single) endGesture(); return true;
 }
+// Role transfers are one undo action but two ordered history entries:
+// the previous holder loses the role before the next holder acquires it.
 bool Model::marker(int i,bool initiative) {
     if(!state.game.active || i<0 || i>=state.game.config.players) return false;
     endGesture(); beginGesture(); int& value=initiative?state.game.initiative:state.game.monarch;

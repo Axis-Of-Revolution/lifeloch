@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lifeloch — v0.10.9 interactive preview</title><style>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lifeloch — v0.10.10 interactive demo</title><style>
 :root{color-scheme:dark;--ink:#f3eddd;--border:#7b766c;--accent:#dabd7a;--bg:#11181a}*{box-sizing:border-box}body{margin:0;background:#121820;color:#e7deca;font:15px Georgia,'Times New Roman',serif}.shell{max-width:770px;margin:18px auto;padding:0 10px}.brand{text-align:center;letter-spacing:3px;font-size:22px;color:#dfcfab;margin:0 0 14px;text-shadow:0 1px 4px #000}.device{background:linear-gradient(115deg,#525b60,#272c36 30%,#43454a 75%,#555f60);border:2px solid #89919a;border-radius:25px;padding:16px 16px 10px;box-shadow:0 23px 45px #0009, inset 0 2px #9998}.top-case{background:#161e23;border-radius:10px;border:6px solid #22272f;max-width:640px;margin:auto;box-shadow:inset 0 0 0 1px #70777b}#bottom{touch-action:none}.screen{display:block;width:100%;height:auto;aspect-ratio:5/3;image-rendering:auto;touch-action:manipulation;background:#151a20}.hinge{height:24px;border-radius:12px;margin:12px 0;background:linear-gradient(#10171d,#81888c 48%,#25292d 80%,#5d6a70);border:1px solid #171b1d}.lower-case{display:grid;grid-template-columns:1fr minmax(0,500px) 1fr;align-items:center;gap:12px;padding:0 0 12px}.bottom-case{border:5px solid #292e37;background:#13191d;border-radius:8px;box-shadow:inset 0 0 0 1px #7b878c}.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;place-items:center;color:#899aa1}.pad button,.pad i{width:19px;height:19px;background:linear-gradient(135deg,#151b20,#555e66);border:1px solid #7b878c;border-radius:4px}.pad i{visibility:hidden}.pad button{color:#f2e1b6;padding:0;cursor:pointer}.actionKeys{display:grid;grid-template-columns:1fr 1fr;gap:8px;justify-items:center}.actionKeys button{background:linear-gradient(#68737a,#2a2f3b);box-shadow:0 3px #111;color:#f2e1b6;border:1px solid #b8bdc4;border-radius:50%;font:16px Georgia;width:32px;height:32px;cursor:pointer}svg .tap{cursor:pointer}svg .tap:active rect:first-child{fill:#596d6b!important}svg .btn-disabled{opacity:.4;pointer-events:none}.help{font:12px system-ui,Arial,sans-serif;color:#9eafaf;text-align:center;padding:10px 3px}.help strong{color:#f0ddb1} .debug{font:11px system-ui;text-align:center;color:#667b83;padding-bottom:22px}.dialog-bg{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:15px;z-index:10}.dialog-bg.open{display:flex}.dialog{width:min(360px,96vw);padding:19px;background:#1e282d;border:2px solid #a98e5d;box-shadow:0 18px 70px #000;border-radius:8px}.dialog label{display:block;margin-bottom:12px;color:#f7e6c3}.dialog input{width:100%;padding:12px 10px;background:#12191c;color:#fff;border:1px solid #9ea29e;font:18px Georgia;border-radius:4px}.dialog .row{display:flex;gap:10px;justify-content:flex-end;margin-top:13px}.dialog button{padding:10px 20px;font:15px Georgia;background:#415355;color:#fff;border:1px solid #79898a;border-radius:4px;cursor:pointer}.dialog button.primary{background:#775e39;border-color:#c1a365}.dialog small{display:block;color:#bec7c5;margin-top:9px;min-height:15px} .keyboard{margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.keyboard button{padding:8px 0}.keyboard[hidden]{display:none} @media(max-width:520px){.device{border-radius:12px;padding:8px 7px}.lower-case{gap:5px}.pad button,.pad i{width:12px;height:12px}.actionKeys button{width:25px;height:25px;font-size:12px}.brand{font-size:17px}.hinge{height:13px;margin:6px 0}}
 .systemKeys{display:flex;justify-content:center;gap:20px}.systemKeys button{background:#303c45;color:#f2e1b6;border:1px solid #829295;border-radius:5px;padding:6px 12px;cursor:pointer}</style></head><body><div class="shell"><h1 class="brand">LIFELOCH</h1><div class="device"><div class="top-case"><svg id="top" class="screen" viewBox="0 0 400 240" role="img" aria-label="Top screen: player life scoreboard"></svg></div><div class="hinge"></div><div class="lower-case"><div class="pad" aria-label="D-pad"><i></i><button data-key="Up" aria-label="Up">↑</button><i></i><button data-key="Left" aria-label="Left">←</button><i></i><button data-key="Right" aria-label="Right">→</button><i></i><button data-key="Down" aria-label="Down">↓</button><i></i></div><div class="bottom-case"><svg id="bottom" class="screen" viewBox="0 0 320 240" role="group" aria-label="Bottom touchscreen game controls"></svg></div><div class="actionKeys"><button title="Undo" data-key="X">X</button><button title="History" data-key="Y">Y</button><button title="Select / add" data-key="A">A</button><button title="Back / subtract" data-key="B">B</button></div></div><div class="systemKeys"><button data-key="L">L</button><button data-key="Select">SELECT</button><button data-key="Start">START</button><button data-key="R">R</button></div></div><p class="help">Touch the lower screen or use the D-pad and buttons.<br>Keyboard: arrows, A/B, X/Y, Q/E for L/R, S for START, Shift for SELECT.<br>SELECT toggles button navigation during a game. Changes save automatically in this browser.</p><p class="debug">Standalone offline preview. Native 3DS builds use the project source.</p></div><div class="dialog-bg" id="dialogBg"><div class="dialog"><label id="question"></label><input id="answer" spellcheck="false" autocomplete="off"><div id="keyboard" class="keyboard" hidden></div><small id="validation"></small><div class="row"><button id="cancel">Cancel</button><button id="submit" class="primary">Save</button></div></div></div>
 <script>
@@ -121,14 +121,24 @@ function orientations(n,k,rs){return rs.map((r,i)=>n===2?(k===1?(i===0?1:3):0):(
 // Slow hydrodipped pigment field: rotating pigment centers, smoothly displaced
 // marble seams. The formula matches the native 3DS sampler.
 const themeCache=new Map();
+// Integrate elapsed time at the PREVIOUS speed. Adjusting the slider must
+// change angular velocity, never the position of the pigment field.
+let themeTime=0,themeLastTime=null,themeLastSpeed=1;
+function themeClock(clock=Date.now()){
+ if(themeLastTime!==null && clock>=themeLastTime)
+  themeTime+=Math.min(clock-themeLastTime,5000)*themeLastSpeed;
+ themeLastTime=clock;
+ themeLastSpeed=state.themeSpeed;
+ return themeTime;
+}
 let themeCanvas=null,themeCanvasCtx=null;
 try{themeCanvas=document.createElement('canvas');themeCanvas.width=160;themeCanvas.height=120;themeCanvasCtx=themeCanvas.getContext?.('2d',{alpha:false})||null}catch{}
 function themeGradient(mask,width=400,clock=Date.now()){
- const speed=state.themeSpeed;
- const frame=Math.floor(clock/50),key=mask+":"+width+":"+Math.round(speed*1000)+":"+frame;
+ const orbitTime=themeClock(clock);
+ const frame=Math.floor(clock/50),key=mask+":"+width+":"+frame;
  if(themeCache.has(key))return themeCache.get(key);
  let chosen=[0,1,2,3,4].filter(i=>mask&(1<<i)),aspect=width/240,n=chosen.length;
- let phase=Math.PI*2*((frame*50*speed)%125000)/125000,cs=Math.cos(phase),sn=Math.sin(phase);
+ let phase=Math.PI*2*(orbitTime%125000)/125000,cs=Math.cos(phase),sn=Math.sin(phase);
  let nodes=chosen.map((color,i)=>{
   let x=.5,y=.5;
   if(n===2)x=i;
@@ -236,7 +246,8 @@ function homeWave(clock=Date.now()){
  for(let i=0;i<count;i++){
   const id='homeWave'+i,dy=i*height,offset=1.875*Math.sin(phase+i*.20);
   defs+=`<clipPath id="${id}"><rect x="0" y="${dy}" width="400" height="${height+.15}"/></clipPath>`;
-  body+=`<image href="${homeBackdrop}" x="${-2+offset}" y="0" width="404" height="240" style="image-rendering:pixelated" clip-path="url(#${id})"/>`;
+  // Six-percent center crop hides existing dark edges throughout the wave.
+  body+=`<image href="${homeBackdrop}" x="${-12+offset}" y="-7.2" width="424" height="254.4" style="image-rendering:pixelated" clip-path="url(#${id})"/>`;
  }
  return `<defs>${defs}</defs><g data-home-wave="true">${body}</g>`;
 }
@@ -415,7 +426,29 @@ function lowerScreen(){navButtons=[];let g=state.game,c=cfg(),b='',u=(label,y,w=
  }
  if(Date.now()<toastUntil)b+=`<g style="pointer-events:none">${rect(15,200,290,26,'#897244','#c7b07a',3)}${tx(toast,160,213,10,'#ffffff','middle')}</g>`;
  syncFocus();if(focusVisible){let f=navButtons.find(b=>b.key===focusKey&&!b.disabled);if(f){let [x,y,w,h]=f.r;b+=`<rect data-focus="${attr(f.key)}" x="${x+1}" y="${y+1}" width="${w-2}" height="${h-2}" fill="none" stroke="#fff1b5" stroke-width="2" pointer-events="none"/>`}}return identityDefs()+themeGradient(activeTheme(),320)+b}
-function render(){updateDiceRoll();syncLifeMotion();let markup=topScreen();if(top.innerHTML!==markup)top.innerHTML=markup;bottom.innerHTML=lowerScreen()}
+// Ambient theme frames must not replace clickable controls. Browser mouse
+// clicks dispatch on release; replacing their targets between press and
+// release loses the click. Compare *structural* markup without the changing
+// raster image, and update that one SVG image in place instead.
+let previousLowerStructure=null;
+function render(){
+ // Stable generated IDs are part of the DOM-preservation invariant.
+ // Monotonic IDs would otherwise change every 50 ms even with the same state.
+ gradientTextId=0;rollingTextId=0;
+ updateDiceRoll();syncLifeMotion();
+ let markup=topScreen();if(top.innerHTML!==markup)top.innerHTML=markup;
+ let controls=lowerScreen();
+ const gradientImage=/<image data-theme-gradient="true"[^>]*?href="([^"]+)"[^>]*\/>/;
+ const match=controls.match(gradientImage);
+ const structure=match?controls.replace(gradientImage,'<image data-theme-gradient="true" data-ambient-only="1"/>'):controls;
+ if(structure!==previousLowerStructure){
+  bottom.innerHTML=controls;
+  previousLowerStructure=structure;
+ }else if(match){
+  const image=bottom.querySelector?.('[data-theme-gradient="true"]');
+  if(image&&image.getAttribute?.('href')!==match[1])image.setAttribute('href',match[1]);
+ }
+}
 function openInput(label,initial,onSave,kind='name',min=0,max=9999){modal={onSave,kind,min,max};document.querySelector('#question').textContent=label;field.value=String(initial);field.type='text';field.inputMode=kind==='name'?'text':'numeric';field.maxLength=kind==='name'?8:7;document.querySelector('#validation').textContent='';keypad.hidden=kind==='name';bg.classList.add('open');setTimeout(()=>{field.focus();field.select()},0)}
 function closeInput(){modal=null;bg.classList.remove('open')}
 function editWhat(what){let c=cfg(),g=state.game;if(what==='life')return openInput('Starting life (1–999)',c.life,n=>{c.life=n},'number',1,999);
@@ -450,7 +483,7 @@ function act(a,par=[]){let g=state.game,c=cfg(),n=par[0];if(['life','cmd','count
  case 'deletePreset':if(confirm('Delete this preset?'))state.presets.splice(n,1);break;
  case 'theme':ret=page;page='theme';break;
  case 'themeColor':{let current=ret==='setup'?state.setup.theme:(g?.config.theme??state.theme),mask=current^(1<<n);if(mask){if(ret==='setup')state.setup.theme=mask;else{state.theme=mask;if(g)g.config.theme=mask}}break}
- case 'themeSpeed':state.themeSpeed=clamp(state.themeSpeed+.025*Number(n||0),1,2);themeCache.clear();break
+ case 'themeSpeed':themeClock();state.themeSpeed=clamp(state.themeSpeed+.025*Number(n||0),1,2);break
  case 'toggle':if(par[0]==='partners'&&!c.commander)break;c[par[0]]=!c[par[0]];break;
  case 'toggleGame':if(n==='partners'&&!g.config.commander)break;g.config[n]=!g.config[n];if(n==='partners'&&!g.config.partners)slot=0;if(n==='commander'&&!g.config.commander&&tab==='commander')tab='life';if(n==='timerEnabled'&&!g.config.timerEnabled){g.timerRemaining=currentTimer();g.timerRunning=false}break;
  case 'players':{if(editingGameLayout&&page==='layouts')break;let x=n;if(x%c.heads||x/c.heads<2)break;if(c.players!==x){c.life=x>=3?40:20;c.commander=x>=3}c.players=x;c.layout=x===3?2:x===5?1:0;break}
@@ -524,14 +557,14 @@ function stopTouchRepeat(){clearTimeout(touchDelay);clearInterval(touchRepeat);t
  function historyY(e){let box=bottom.getBoundingClientRect?.();return box?.height?((e.clientY-box.top)/box.height)*240:(e.offsetY??e.clientY??0)}
  let themeDrag=false;
  function sliderPosition(e){let r=bottom.getBoundingClientRect?.();let x=r?.width?((e.clientX-r.left)/r.width)*320:(e.offsetX??e.clientX??49);return clamp(1+(x-49)/222,1,2)}
- function updateThemeDrag(e){let v=sliderPosition(e);if(state.themeSpeed!==v){state.themeSpeed=v;themeCache.clear();save();render()}}
+ function updateThemeDrag(e){let v=sliderPosition(e);if(Math.abs(state.themeSpeed-v)>0.00001){themeClock();state.themeSpeed=v;render()}}
  bottom.addEventListener('pointerdown',e=>{let y=historyY(e),r=bottom.getBoundingClientRect?.();let x=r?.width?((e.clientX-r.left)/r.width)*320:(e.offsetX??e.clientX??0);if(page==='theme'&&x>=32&&x<=288&&y>=158&&y<=200){themeDrag=true;bottom.setPointerCapture?.(e.pointerId);updateThemeDrag(e);e.preventDefault?.()}});
  bottom.addEventListener('pointermove',e=>{if(themeDrag&&page==='theme'){updateThemeDrag(e);e.preventDefault?.()}});
  bottom.addEventListener('wheel',e=>{if(page!=='history')return;e.preventDefault?.();historyWheel+=e.deltaY;let step=Math.trunc(historyWheel/23);if(step){historyWheel-=step*23;historyScroll(step)}},{passive:false});
  bottom.addEventListener('pointerdown',e=>{if(page==='history'&&historyY(e)>=90&&historyY(e)<=205){historyTouch={y:historyY(e),remain:0};bottom.setPointerCapture?.(e.pointerId);e.preventDefault?.();return}});
  bottom.addEventListener('pointermove',e=>{if(!historyTouch||page!=='history')return;let y=historyY(e);historyTouch.remain+=historyTouch.y-y;historyTouch.y=y;let steps=Math.trunc(historyTouch.remain/23);if(steps){historyTouch.remain-=steps*23;historyScroll(steps)}e.preventDefault?.()});
 bottom.addEventListener('pointerdown',e=>{let node=e.target.closest('[data-a]');if(!node||node.classList.contains('btn-disabled'))return;focusVisible=false;let params=JSON.parse(decodeURIComponent(node.dataset.p||'[]'));if(!repeatActions.has(node.dataset.a))return;e.preventDefault();touchHold={a:node.dataset.a,params};act(touchHold.a,touchHold.params);touchDelay=setTimeout(()=>{touchRepeat=setInterval(()=>{if(touchHold)act(touchHold.a,touchHold.params)},110)},450)});
-document.addEventListener('pointerup',()=>{themeDrag=false;historyTouch=null;stopTouchRepeat();setTimeout(()=>{touchHold=null},0)});
+document.addEventListener('pointerup',()=>{if(themeDrag)save();themeDrag=false;historyTouch=null;stopTouchRepeat();setTimeout(()=>{touchHold=null},0)});
 document.addEventListener('pointercancel',()=>{themeDrag=false;historyTouch=null;stopTouchRepeat();touchHold=null});
 bottom.addEventListener('pointerleave',()=>{if(!themeDrag)historyTouch=null;stopTouchRepeat();touchHold=null});
 document.querySelector('#cancel').addEventListener('click',closeInput);

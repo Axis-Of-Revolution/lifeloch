@@ -24,17 +24,27 @@ Color themeSample(int mask,float x,float y,float aspect,uint64_t time,float spee
         int mask=-1,count=0;uint64_t frame=~uint64_t(0);float aspect=0,speed=-1;
         std::array<MotionPoint,5> points{};
         std::array<float,129> warpX{},warpY{};
+        uint64_t lastTime=0;
+        float previousSpeed=1.f;
+        double orbitMs=0;
     };
     static Cache cache;
     speed=std::clamp(speed,1.f,2.f);
     // 50ms frame quantization is imperceptible with a 125s orbital period,
     // while avoiding thousands of trig calls per raster frame on 3DS.
     uint64_t frame=time/50;
+    // Integrate speed over elapsed time: changes affect velocity, not position.
+    // Never calculate phase from absoluteTime * currentSpeed; that jumps as
+    // the user drags the slider. Use the speed before the current update.
+    if(cache.lastTime&&time>=cache.lastTime)
+        cache.orbitMs+=double(std::min<uint64_t>(time-cache.lastTime,5000))*cache.previousSpeed;
+    cache.lastTime=time;
+    cache.previousSpeed=speed;
     if(cache.mask!=mask||cache.frame!=frame||cache.aspect!=aspect||cache.speed!=speed){
         cache.mask=mask;cache.frame=frame;cache.aspect=aspect;cache.speed=speed;
         auto base=themePoints(mask,aspect);cache.count=static_cast<int>(base.size());
         constexpr float tau=6.28318530718f;
-        float phase=tau*static_cast<float>(std::fmod(double(frame*50)*speed,125000.0)/125000.0);
+        float phase=tau*static_cast<float>(std::fmod(cache.orbitMs,125000.0)/125000.0);
         float cs=std::cos(phase),sn=std::sin(phase);
         for(int j=0;j<cache.count;++j){auto& pt=base[j];float ox=(pt.x-.5f)*aspect,oy=pt.y-.5f;
             cache.points[j]={ox*cs-oy*sn,ox*sn+oy*cs,magicColor(pt.color)};

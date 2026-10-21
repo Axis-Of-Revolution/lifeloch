@@ -32,7 +32,9 @@ int main(){
   assert(speeds.model.state.themeSpeed>.99f&&speeds.model.state.themeSpeed<=2.f);
   auto encoded=encode(speeds.model.state);State recovered;uint32_t seq=0;
   assert(decode(encoded,recovered,seq)&&std::abs(recovered.themeSpeed-speeds.model.state.themeSpeed)<.0015f);
-  assert(themeSample(31,.32f,.23f,400.f/240,25000,1.f)!=themeSample(31,.32f,.23f,400.f/240,25000,2.f));
+  // Changing speed at one instant alters only angular velocity, not phase.
+  // The sampled pigment must remain continuous across a slider adjustment.
+  assert(themeSample(31,.32f,.23f,400.f/240,25000,1.f)==themeSample(31,.32f,.23f,400.f/240,25000,2.f));
   auto v10=encode(speeds.model.state);auto put=[&](std::vector<uint8_t>& target,int at,uint32_t value){for(int i=0;i<4;++i)target[at+i]=(value>>(i*8))&255;};
   put(v10,8,10);put(v10,static_cast<int>(v10.size())-4,2);put(v10,20,0);
   uint32_t checksum=0xffffffff;for(auto byte:v10){checksum^=byte;for(int i=0;i<8;++i)checksum=(checksum>>1)^(0xedb88320u&(0u-(checksum&1)));}put(v10,20,~checksum);

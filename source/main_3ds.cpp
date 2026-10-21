@@ -14,6 +14,8 @@
 
 namespace {
 deck::App app;
+// Deliberately retain this legacy SD path across application rebranding.
+// Changing it would silently orphan existing profiles and saved games.
 deck::Storage storage("sdmc:/3ds/command-deck");
 uint32_t savedRevision=0;
 bool initialized=false;
@@ -76,9 +78,13 @@ public:
         for(int i=0;i<bands;++i){
             float sy=float(i)*192/bands,sh=192.f/bands;
             Tex3DS_SubTexture slice{320,static_cast<uint16_t>(sh),0.f,1.f-sy/256.f,320.f/512.f,1.f-(sy+sh)/256.f};
-            // Two-pixel overscan prevents transparent edge gaps while the image waves.
+            // Center-crop 6% to ensure no dark edge peeks through the wave.
+            // This uses the original texture; no replacement artwork.
             float motion=1.875f*std::sin(phase+float(i)*.20f);
-            C2D_DrawImageAt({&homeTexture,&slice},area.x-2.f+motion,area.y+area.h*i/bands,0,nullptr,(area.w+4.f)/320.f,area.h/(bands*sh));
+            const float zoom=1.06f;
+            C2D_DrawImageAt({&homeTexture,&slice},area.x-(area.w*zoom-area.w)*.5f+motion,
+                area.y-(area.h*zoom-area.h)*.5f+area.h*zoom*i/bands,0,nullptr,
+                area.w*zoom/320.f,area.h*zoom/(bands*sh));
         }
     }
     void begin(){C2D_TextBufClear(textBuffer);}

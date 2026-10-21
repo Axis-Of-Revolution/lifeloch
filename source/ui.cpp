@@ -156,6 +156,8 @@ void App::damageRow(const Game& g,int who,Rect area){
         identityText(entry(j),cx,cy,font,g.players[j],Align::Center,cell-6);
     }
 }
+// Board geometry is intentionally different for two compact side seats in
+// six-player side-sections; keep 2x2 commander cells and upper-life priority.
 void App::board(const Game& g,bool preview){
     label(preview?"PREVIEW":"LIFELOCH",6,4,9,p.accent);
     if(g.config.clockEnabled)label(currentClock,200,4,9,p.ink,Align::Center,75);

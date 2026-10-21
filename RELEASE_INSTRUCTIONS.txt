@@ -1,9 +1,11 @@
-Lifeloch v0.10.9
+Lifeloch v0.10.10
 
-Open dist/Lifeloch-v0.10-Demo.html for the offline browser demo.
-README.md describes features, controller inputs, physics, saves and build commands.
-COPY_AND_BRANDING.md lists approved terminology and artwork preparation.
+Run dist/Lifeloch-v0.10-Demo.html in a browser (no server needed).
+README.md: quick start, features, installation and build requirements.
+CHANGELOG.md: detailed release/design history.
+LLM-CONTEXT.md: architecture map and editing/test checklist.
+COPY_AND_BRANDING.md: terminology and artwork permissions.
 
-This archive contains current source, the demo, tests, and supplied artwork.
-It contains no CIA, 3DSX, ELF or old compiled banner. A native build requires
-the devkitPro 3DS toolchain plus makerom and bannertool.
+This source archive contains the browser demo, source and tests, but no CIA.
+A native build requires the devkitPro 3DS toolchain plus makerom and bannertool.
+The resulting CIA has NOT yet been tested on physical hardware.
