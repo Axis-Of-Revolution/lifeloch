@@ -30,7 +30,7 @@ struct Player {
     std::array<std::array<int, 2>, MaxPlayers> damage{};
     bool operator==(const Player& b) const;
 };
-enum class HistoryKind { Life, Poison };
+enum class HistoryKind { Life, Poison, Monarch, Initiative };
 struct LifeEvent {
     int team=0, player=0, before=0, after=0, source=-1, slot=0;
     uint32_t seconds=0;
@@ -59,6 +59,7 @@ struct State {
     Game game;
     bool light = false; // Legacy save field; appearance now uses themeColors.
     int themeColors = 31; // W U B R G bits, one to five selected.
+    int themeSpeedStep = 0; // 0..4 means 1x, 1.5x, 2x, 2.5x, 3x; global theme preference.
 };
 enum class Counter { Life, Poison, Energy, Experience, Commander, Turn };
 bool validConfig(const Config& c);

@@ -33,9 +33,18 @@ static std::array<Rect,MaxPlayers> rawPanels(int n,int layout){
         return out;
     }
     if(layout==1){
-        out[n-2]={4,20,92,204};out[n-1]={304,20,92,204};
-        if(n==4){out[0]={102,20,196,99};out[1]={102,125,196,99};}
-        else for(int i=0;i<4;++i)out[i]={102.0f+(i%2)*101,20.0f+(i/2)*105,95,99};
+        if(n==6){
+            // Two compact side seats flank four regular-format central seats.
+            // The side seats rotate into 125x76 local coordinates and are
+            // smaller in area than any of the 111x99 central seats.
+            for(int i=0;i<4;++i)
+                out[i]={86.0f+(i%2)*117,20.0f+(i/2)*105,111,99};
+            out[4]={4,59.5f,76,125};
+            out[5]={320,59.5f,76,125};
+        }else{
+            out[n-2]={4,20,92,204};out[n-1]={304,20,92,204};
+            out[0]={102,20,196,99};out[1]={102,125,196,99};
+        }
         return out;
     }
     int cols=n==6?3:2;float w=(392.0f-(cols-1)*6)/cols,h=99;

@@ -44,6 +44,12 @@ void App::identityText(const std::string& text,float x,float y,float size,const 
     if(!pixelCompatible(text)){label(text,x,y,size,p.ink,align,width);identityFill({start,y+size*.72f,span,1},player);return;}
     GradientInk ink(*draw,c[0],c[1],start,span);pixelText(ink,text,x,y,size,c[0],align,width);
 }
+void App::identityShadowText(const std::string& text,float x,float y,float size,const Player& player,Align align,float width){
+    // Offset glyph silhouette, not an outline or black backing rectangle.
+    // Preserve the original solid/gradient ink on top.
+    label(text,x+.95f,y+1.20f,size,0x081417,align,width);
+    identityText(text,x,y,size,player,align,width);
+}
 std::string timeText(uint32_t t){char b[24];if(t>=3600)snprintf(b,sizeof(b),"%u:%02u:%02u",static_cast<unsigned>(t/3600),static_cast<unsigned>((t/60)%60),static_cast<unsigned>(t%60));else snprintf(b,sizeof(b),"%02u:%02u",static_cast<unsigned>(t/60),static_cast<unsigned>(t%60));return b;}
 void App::label(const std::string& s,float x,float y,float size,Color color,Align a,float width){
     if(width<=0)width=a==Align::Left?viewport-x-8:(a==Align::Right?x-8:2*std::min(x-8,viewport-x-8));
@@ -77,7 +83,7 @@ void App::syncLifeMotion(){
 void App::render(Renderer& r){
     syncLifeMotion();
     bool configuring=page==Page::Rules||page==Page::Seats||(page==Page::Layout&&!editingGameLayout)||page==Page::Options||page==Page::Presets||(page==Page::Theme&&themeReturn==Page::Rules);
-    ThemeRenderer themed(r,configuring?model.state.setup.themeColors:model.state.themeColors,now);
+    ThemeRenderer themed(r,configuring?model.state.setup.themeColors:model.state.themeColors,now,model.state.themeSpeedStep);
     draw=&themed;buttons.clear();
     p=Palette{0x101b1c,0x19292a,0x263a3b,0xf0f2df,0xa4b6af,0x3b5350,0xc5dc9b,0x17251e,0x82d8a2,0xfa9d8d};
     viewport=400;themed.screen(0);themed.box({0,0,400,240},p.bg);top();
@@ -113,7 +119,7 @@ void App::top(){
 }
 void App::miniHistory(int team,float x,float y,float width,int count,float spacing,float font){
     int shown=0;const auto& history=model.state.game.history;
-    for(auto it=history.rbegin();it!=history.rend()&&shown<count;++it)if(it->team==team){
+    for(auto it=history.rbegin();it!=history.rend()&&shown<count;++it)if(it->team==team&&(it->kind==HistoryKind::Life||it->kind==HistoryKind::Poison)){
         auto text=(it->kind==HistoryKind::Poison?"P ":"")+signedNumber(it->after-it->before)+"→"+number(it->after);Color ink=it->kind==HistoryKind::Poison?0xc48cf1:it->after>=it->before?p.good:p.bad;
         label(text,x,y+shown*spacing,font,ink,Align::Left,width);
         if(shown==0)draw->box({x,y+font*.72f,std::min(width,pixelAdvance(text)*font/22),1},ink);
@@ -127,16 +133,27 @@ void App::damageRow(const Game& g,int who,Rect area){
     std::vector<int> sources;
     for(int j=0;j<g.config.players;++j)if(g.players[who].damage[j][0]||(g.config.partners&&g.players[who].damage[j][1]))sources.push_back(j);
     std::stable_sort(sources.begin(),sources.end(),[&](int a,int b){const auto& d=g.players[who].damage;return d[a][0]+(g.config.partners?d[a][1]:0)>d[b][0]+(g.config.partners?d[b][1]:0);});
-    if(sources.size()>3)sources.resize(3);
-    bool shortBox=area.h<25;float lineStep=shortBox?5.0f:8.0f,entryY=shortBox?7.5f:11.0f;
-    int cols=area.w>=104?3:area.w>=70?2:1;
-    label("Commander damage",area.x+3,area.y+(shortBox?1.0f:2.0f),shortBox?5.8f:6.5f,p.muted,Align::Left,area.w-6);
-    if(sources.empty()){label("--",area.x+3,area.y+entryY,7,p.muted,Align::Left,area.w-6);return;}
-    for(int item=0;item<static_cast<int>(sources.size());++item){
-        float cw=(area.w-4)/cols,x=area.x+2+(item%cols)*cw,y=area.y+entryY+(item/cols)*lineStep;
-        int j=sources[item],a=g.players[who].damage[j][0],b=g.players[who].damage[j][1];
-        std::string text=playerAbbreviation(g.players[j],j)+":"+number(a);if(g.config.partners)text+="/"+number(b);
-        identityText(text,x,y,shortBox?6.5f:7.0f,g.players[j],Align::Left,cw-1);
+    // Fixed 2x2 grid: exactly two text rows and two columns regardless of
+    // seat width. Scale the font uniformly to the longest of the top 4 entries.
+    auto entry=[&](int j){const auto& d=g.players[who].damage[j];std::string t=playerAbbreviation(g.players[j],j)+":"+number(d[0]);if(g.config.partners)t+="/"+number(d[1]);return t;};
+    constexpr float inset=4.f;
+    float cell=(area.w-2*inset)/2.f, row=(area.h-4)/2.f;
+    float font=std::min(9.f,row*.90f);
+    // Reserve equal gutters around both centered cells and between columns.
+    for(size_t i=0;i<std::min<size_t>(sources.size(),4);++i){
+        float width=pixelAdvance(entry(sources[i]));
+        if(width>0)font=std::min(font,std::max(2.f,cell-6.f)*22.f/width);
+    }
+    font=std::max(2.f,font);
+    if(sources.empty()){
+        label("--",area.x+inset+cell*.5f,area.y+2+row*.5f-font*.45f,9,p.muted,Align::Center,cell-6);
+        return;
+    }
+    for(size_t index=0;index<std::min<size_t>(sources.size(),4);++index){
+        int j=sources[index];
+        float cx=area.x+inset+(index%2+.5f)*cell;
+        float cy=area.y+2+(index/2+.5f)*row-font*.45f;
+        identityText(entry(j),cx,cy,font,g.players[j],Align::Center,cell-6);
     }
 }
 void App::board(const Game& g,bool preview){
@@ -151,45 +168,65 @@ void App::board(const Game& g,bool preview){
         PanelRenderer card(*original,areas[i],oriented.rotations[i]);draw=&card;float w=card.width(),h=card.height();viewport=static_cast<int>(w);
         bool compact=h<120;draw->box({0,0,w,h},0x6d8580,2);panel({1,1,w-2,h-2});
         if(!preview&&i==selected)draw->box({0,5,2,h-10},p.accent,1);
-        identityFill({6,6,20,14},g.players[i]);
+        // Four central seats in side sections use standard geometry. Only
+        // the physically small, rotated side seats move life below their name.
+        bool sideSections=g.config.players==6&&g.config.layout==1&&areas[i].w<=76.5f;
+        float margin=6.f, nameLimit=w*.5f, nameX=22.f;
+        identityFill({5,6,14,12},g.players[i]);
         auto abbreviation=playerAbbreviation(g.players[i],i);
-        if(pixelCompatible(abbreviation)){
-            struct Outline:Renderer{Renderer& t;Outline(Renderer& t):t(t){}void screen(int)override{}void text(const std::string&,float,float,float,Color,Align,float)override{}void box(Rect r,Color,float=0)override{t.box({r.x-.35f,r.y-.35f,r.w+.7f,r.h+.7f},0x142026);}} outline(*draw);
-            pixelText(outline,abbreviation,16,9,8,0x142026,Align::Center,18);
-            pixelText(*draw,abbreviation,16,9,8,0xfff4da,Align::Center,18);
-        }else{for(float dx:{-.4f,.4f})for(float dy:{-.4f,.4f})label(abbreviation,16+dx,9+dy,8,0x142026,Align::Center,18);label(abbreviation,16,9,8,0xfff4da,Align::Center,18);}
-        std::string title=g.players[i].name;
-        label(title,30,8,10,0,Align::Left,w-35);
+        // Badge initials use a displaced shadow, never a stroke outline.
+        label(abbreviation,12+.85f,8+1.f,7,0x081417,Align::Center,13);
+        label(abbreviation,12,8,7,0xfff4da,Align::Center,13);
+        // Existing long profiles retain their saved names. Only the first
+        // eight UTF-8 code points appear on the board, without cutting bytes.
+        std::string title;int nameCodepoints=0;for(size_t at=0;at<g.players[i].name.size()&&title.size()<64;){
+            unsigned char ch=g.players[i].name[at];size_t bytes=ch<128?1:ch<224?2:ch<240?3:4;
+            if(title.size()+bytes>64)break;
+            title+=g.players[i].name.substr(at,bytes);at+=bytes;
+            if(++nameCodepoints>=8)break;
+        }
+        float titleSpace=sideSections?w-margin-nameX:nameLimit-nameX-3;
+        titleSpace=std::max(7.f,titleSpace);
+        float titleFont=std::min(10.f,titleSpace*22.f/std::max(1.f,pixelAdvance(title)));
+        if(sideSections)titleFont=std::max(8.f,titleFont); // legibility wins on compact side seats
+        identityShadowText(title,nameX,8,titleFont,g.players[i],Align::Left,titleSpace);
         const int values[]={g.players[i].poison,g.players[i].energy,g.players[i].experience};
         const char* codes[]={"P:","E:","X:"};const Color colors[]={0xc48cf1,0xffda58,0xc8d0dc};
         int badges=0;for(int v:values)if(v)++badges;
         bool roles=g.monarch==i||g.initiative==i;if(roles)++badges;
-        float badgeY=h-6-(badges?9:0);
-        int sources=0;for(int j=0;j<g.config.players;++j)if(g.players[i].damage[j][0]||(g.config.partners&&g.players[i].damage[j][1]))++sources;
-        sources=std::min(sources,3);
-        bool sideDamage=h<80&&g.config.commander;
-        float left=w*(sideDamage?.43f:.62f),lifeW=left-10,historyX=left+2;
-        float commandW=historyX-6+1; // share the history divider's one-pixel edge
-        int cols=commandW>=104?3:commandW>=70?2:1,rows=std::max(1,(sources+cols-1)/cols);
-        float commandH=g.config.commander?11+rows*8:0,commandY=badgeY-(badges?3:0)-commandH;
-        if(sideDamage){commandY=24;commandH=badgeY-3-commandY;}
-        float lifeY=24,lifeBottom=(sideDamage?badgeY-3:(g.config.commander?commandY:badgeY))-4,lifeH=std::max(1.0f,lifeBottom-lifeY);
-        float historyBottom=(sideDamage?badgeY-3:badgeY)-4;
-        float shown=preview?g.players[i].life:displayedLife(i);float digits=std::max({pixelAdvance("00"),pixelAdvance(number(g.players[i].life)),pixelAdvance(number(static_cast<int>(std::round(shown))))});
-        float lifeSize=std::min(lifeH*22/16,lifeW*22/digits);
-        if(!sideDamage){
-        float historyFont=compact?7:10,spacing=compact?9:13;
+        float trackerX=w/3.f+2.f;
+        float trackerW=w-margin-trackerX;
+        float commandH=g.config.commander?std::clamp(h*.23f,20.f,25.f):0.f;
+        float commandY=h-5-commandH;
+        float badgeY=(g.config.commander?commandY:h-5)-10;
+        float lifeY=sideSections?24.f:5.f;
+        float lifeBottom=(badges?badgeY:(g.config.commander?commandY:h-5))-1;
+        float lifeH=std::max(1.f,lifeBottom-lifeY);
+        float lifeW=w/2.f-7.f;
+        float lifeX=w-margin;
+        float shown=preview?g.players[i].life:displayedLife(i);
+        float digits=std::max({pixelAdvance("00"),pixelAdvance(number(g.players[i].life)),pixelAdvance(number(static_cast<int>(std::round(shown))))});
+        float lifeSize=std::min(lifeH*22.f/16.f,lifeW*22.f/digits);
+        float historyX=margin;
+        float historyW=w/3.f-12.f;
+        float historyFont=compact?9.25f:11.f,spacing=compact?11.25f:14.f;
+        float historyBottom=h-8;
         int count=std::max(0,1+static_cast<int>(std::floor((historyBottom-24-6)/spacing)));
-        if(!preview&&count)miniHistory(i/g.config.heads,historyX+4,24,w-historyX-9,count,spacing,historyFont);
-        }
-        if(g.config.commander)damageRow(g,i,sideDamage?Rect{historyX,commandY,w-historyX-6,commandH}:Rect{6,commandY,commandW,commandH});
-        // The history column reads clearly without an additional dividing line.
-        lifeText(*draw,g.players[i].life,6,lifeY,lifeSize,(!preview&&model.atThreshold(i))?p.bad:p.ink,Align::Left,lifeW,now,g.config.life/2,!preview,!preview&&model.atThreshold(i),shown,!preview&&lifeMotion[i].from>lifeMotion[i].target,g.config.life);
-        float badgeW=(historyX-6)/std::max(1,badges);int at=0;
-        for(int j=0;j<3;++j)if(values[j]){label(std::string(codes[j])+number(values[j]),6+at*badgeW,badgeY,9.0f,colors[j],Align::Left,badgeW-3);++at;}
-        if(roles){float bx=6+at*badgeW,mw=std::min(11.0f,(badgeW-3)/2);
-            if(g.monarch==i)drawMarker(*draw,{bx,badgeY,mw,9},false);
-            if(g.initiative==i)drawMarker(*draw,{bx+mw+2,badgeY,mw,9},true);
+        if(!preview&&count)miniHistory(i/g.config.heads,historyX,24,historyW,count,spacing,historyFont);
+        if(g.config.commander)damageRow(g,i,Rect{trackerX,commandY,trackerW,commandH});
+        lifeText(*draw,g.players[i].life,lifeX,lifeY,lifeSize,(!preview&&model.atThreshold(i))?p.bad:p.ink,Align::Right,lifeW,now,g.config.life/2,!preview,!preview&&model.atThreshold(i),shown,!preview&&lifeMotion[i].from>lifeMotion[i].target,g.config.life);
+        if(badges){
+            float badgeW=trackerW/badges;int at=0;
+            for(int j=0;j<3;++j)if(values[j]){
+                std::string t=std::string(codes[j])+number(values[j]);
+                float f=std::min(9.0f,(badgeW-2)*22.f/std::max(1.f,pixelAdvance(t)));
+                label(t,trackerX+(at+1)*badgeW-2,badgeY,f,colors[j],Align::Right,badgeW-3);++at;
+            }
+            if(roles){float mw=std::min(11.0f,(badgeW-3)/2);
+                float right=trackerX+(at+1)*badgeW-2;
+                if(g.initiative==i)drawMarker(*draw,{right-mw,badgeY,mw,9},true);
+                if(g.monarch==i)drawMarker(*draw,{right-mw-(g.initiative==i?mw+2:0),badgeY,mw,9},false);
+            }
         }
         draw=original;viewport=400;
     }
@@ -204,7 +241,8 @@ void App::board(const Game& g,bool preview){
 }
 void App::playerStrip(){
     const auto& g=model.state.game;int n=g.config.players;float w=(296.0f-(n-1)*4)/n;
-    for(int i=0;i<n;++i){Rect area{12+i*(w+4),30,w,24};button(area,"",{Action::SelectPlayer,i},i==selected,true,false,11);identityFill({area.x+2,area.y+2,area.w-4,area.h-4},g.players[i],true);identityFill({area.x+2,area.y+20,area.w-4,2},g.players[i]);label(playerAbbreviation(g.players[i],i),area.x+w/2,36,11,p.ink,Align::Center,w-6);buttons.back().label=g.players[i].name;}
+    for(int i=0;i<n;++i){Rect area{12+i*(w+4),30,w,24};button(area,"",{Action::SelectPlayer,i},i==selected,true,false,11);identityFill({area.x+2,area.y+2,area.w-4,area.h-4},g.players[i],true);identityFill({area.x+2,area.y+20,area.w-4,2},g.players[i]);label(playerAbbreviation(g.players[i],i),area.x+w/2+1,37.15f,11,0x081417,Align::Center,w-6);
+        label(playerAbbreviation(g.players[i],i),area.x+w/2,36,11,0xfff4da,Align::Center,w-6);buttons.back().label=g.players[i].name;}
     if(g.config.heads>1)for(int first=0;first<n;first+=g.config.heads){float x=10.5f+first*(w+4),width=g.config.heads*w+(g.config.heads-1)*4+3;Color border=0xe5d6b5;
         draw->box({x,28.5f,width,1},border);draw->box({x,54.5f,width,1},border);draw->box({x,28.5f,1,27},border);draw->box({x+width-1,28.5f,1,27},border);
     }
@@ -264,28 +302,31 @@ void App::historyView(){
         if(index>=static_cast<int>(rows.size()))break;
         const auto& e=*rows[index];int who=std::clamp(e.player,0,g.config.players-1);
         identityText(playerAbbreviation(g.players[who],who),playerX,y+4,11,g.players[who],Align::Left,47);
-        if(g.config.turnEnabled)label(e.turn<0?"?":number(e.turn),turnX,y+4,11,e.turn<0?p.muted:p.ink,Align::Left,50);
-        label((e.kind==HistoryKind::Poison?"P ":"")+signedNumber(e.after-e.before)+"→"+number(e.after),changeX,y+2,12,e.kind==HistoryKind::Poison?0xc48cf1:e.after>e.before?p.good:p.bad,Align::Left,g.config.turnEnabled?104:121);
-        std::string description=e.kind==HistoryKind::Poison?"Poison":e.source>=0?playerAbbreviation(g.players[e.source],e.source)+" CMD "+(e.slot?"B":"A"):"Life";
+        if(g.config.turnEnabled)label(number(std::max(0,e.turn)),turnX,y+4,11,p.ink,Align::Left,50);
+        bool roleEvent=e.kind==HistoryKind::Monarch||e.kind==HistoryKind::Initiative;
+        std::string change=roleEvent?(e.before==1&&e.after==0?"Loses role":"Takes role"):(e.kind==HistoryKind::Poison?"P ":"")+signedNumber(e.after-e.before)+"→"+number(e.after);
+        Color ink=roleEvent?p.accent:e.kind==HistoryKind::Poison?0xc48cf1:e.after>e.before?p.good:p.bad;
+        label(change,changeX,y+2,roleEvent?10:12,ink,Align::Left,g.config.turnEnabled?104:121);
+        std::string description=e.kind==HistoryKind::Monarch?"Monarch":e.kind==HistoryKind::Initiative?"Initiative":e.kind==HistoryKind::Poison?"Poison":e.source>=0?playerAbbreviation(g.players[e.source],e.source)+" CMD "+(e.slot?"B":"A"):"Life";
         label(description,detailX,y+4,9,p.muted,Align::Right,72);
         draw->box({12,y+20,289,.5f},p.line);
     }
-    if(rows.empty())label("No life or poison changes yet.",155,126,13,p.muted,Align::Center,280);
+    if(rows.empty())label("No game history recorded yet.",155,126,13,p.muted,Align::Center,280);
     // Persistent right-hand scrollbar: track and thumb scale with item count.
     int maximum=maxHistoryOffset();float trackY=93,trackH=111;
     draw->box({305,trackY,3,trackH},p.line);
     float thumb=maximum?std::max(12.f,trackH*5.0f/(maximum+5)):trackH;
     draw->box({305,trackY+(maximum?(trackH-thumb)*historyPage/maximum:0),3,thumb},p.accent);
-    button({12,211,68,25},"Undo",{Action::Undo},false,model.canUndo(),false,11);
-    button({87,211,31,25},"",{Action::HistoryScroll,-1},false,historyPage>0,false);
-    button({124,211,31,25},"",{Action::HistoryScroll,1},false,historyPage<maximum,false);
-    // Pixel-stepped arrows; avoid font-dependent Unicode glyphs on 3DS.
-    for(int step=0;step<4;++step){float w=2+step*3;
-        draw->box({102.5f-w/2,218.f+step*2,w,2},historyPage>0?p.ink:p.muted);
-        draw->box({139.5f-w/2,225.f-step*2,w,2},historyPage<maximum?p.ink:p.muted);
+    button({12,211,66,25},"Undo",{Action::Undo},false,model.canUndo(),false,11);
+    button({84,211,66,25},"Redo",{Action::Redo},false,model.canRedo(),false,11);
+    button({157,211,30,25},"",{Action::HistoryScroll,-1},false,historyPage>0,false);
+    button({193,211,30,25},"",{Action::HistoryScroll,1},false,historyPage<maximum,false);
+    // Four stepped rows of square pixels match the game's bitmap alphabet.
+    for(int step=0;step<4;++step){float w=4+step*4;
+        draw->box({172.0f-w/2,218.f+step*2,w,2},historyPage>0?p.ink:p.muted);
+        draw->box({208.0f-w/2,225.f-step*2,w,2},historyPage<maximum?p.ink:p.muted);
     }
-    button({162,211,68,25},"Redo",{Action::Redo},false,model.canRedo(),false,11);
-    button({237,211,71,25},"Menu",{Action::Menu},false,true,false,11);
+    button({232,211,76,25},"Menu",{Action::Menu},false,true,false,11);
 }
 void App::bottom(){
     auto& s=model.state;auto& g=s.game;
@@ -339,7 +380,7 @@ void App::bottom(){
         button({12,190,90,26},"Previous",{Action::Page,-1},false,listPage>0,false,10);button({218,190,90,26},"Next",{Action::Page,1},false,(listPage+1)*5<count,false,10);break;}
     case Page::Game:{
         selected=std::clamp(selected,0,g.config.players-1);const auto& who=g.players[selected];if(!g.config.commander&&tab==1)tab=0;
-        identityText(who.name,12,8,15,who,Align::Left,218);
+        identityShadowText(who.name,12,8,15,who,Align::Left,218);
         if(g.config.timerEnabled)label(timeText(g.timerRemaining),308,10,9,p.muted,Align::Right,74);
         playerStrip();
         if(g.config.commander){button({12,60,94,24},"Life",{Action::Tab,0},tab==0,true,false,11);button({113,60,94,24},"Commander",{Action::Tab,1},tab==1,true,false,10);button({214,60,94,24},"Counters",{Action::Tab,2},tab==2,true,false,10);}
@@ -445,6 +486,16 @@ void App::bottom(){
             button(tile,names[j],{Action::ThemeColor,j},active,true,false,11);
             draw->box({tile.x+8,116,40,3},magicColor(j));
         }
+        label("Rotation speed",12,143,12,p.ink,Align::Left,210);
+        const char* marks[]={"1", "1.5", "2", "2.5", "3"};
+        draw->box({40,172,240,2},p.line);
+        for(int j=0;j<5;++j){
+            const float x=40.f+j*60;const bool chosen=s.themeSpeedStep==j;
+            draw->box({x-2,169,4,8},chosen?p.accent:p.muted);
+            draw->box({x-(chosen?6.f:4.f),172-(chosen?6.f:4.f),chosen?12.f:8.f,chosen?12.f:8.f},chosen?p.accent:p.raised);
+            label(marks[j],x,188,10,chosen?p.ink:p.muted,Align::Center,44);
+            buttons.push_back({{x-24,158,48,44},{Action::ThemeSpeed,j},std::string("Rotation speed ")+marks[j]+"x",true,false});
+        }
         button({12,208,296,28},"Done",{Action::Back},true,true,false,13);break;}
     case Page::Clock:case Page::GameTrackers:
         header("Game settings");
@@ -517,6 +568,7 @@ void App::dispatch(Command c){
         int& mask=themeReturn==Page::Rules?s.setup.themeColors:s.themeColors;
         int next=mask^(1<<c.a);if(next){mask=next;if(g.active&&themeReturn==Page::Menu)g.config.themeColors=next;model.touch();}
         }break;
+    case Action::ThemeSpeed:if(c.a>=0&&c.a<5&&s.themeSpeedStep!=c.a){s.themeSpeedStep=c.a;model.touch();}break;
     case Action::LinkLife:g.config.linkLife=!g.config.linkLife;model.touch();break;
     case Action::Players:editingGameLayout=false;page=Page::Layout;break;
     case Action::GameLayout:if(g.active){editingGameLayout=true;page=Page::Layout;}break;
@@ -716,7 +768,7 @@ void App::submitText(const std::string& value,bool accepted){
     if(kind==InputKind::NewProfile){ok=model.addProfile(value);if(ok){profile=static_cast<int>(model.state.profiles.size())-1;page=Page::Profile;}}
     else if(kind==InputKind::RenameProfile)ok=model.renameProfile(profile,value);
     else if(kind==InputKind::Preset)ok=model.savePreset(value);
-    if(!ok)message("Use a name of 1-16 characters");else if(kind==InputKind::Preset)message("Preset saved");
+    if(!ok)message("Use a name of 1-8 characters");else if(kind==InputKind::Preset)message("Preset saved");
 }
 std::string App::summary()const{
     const auto& g=model.state.game;if(!g.active)return "Lifeloch. Create a game or player profile.";

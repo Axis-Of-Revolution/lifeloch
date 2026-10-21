@@ -2,6 +2,7 @@
 #include "layout.hpp"
 #include "pixel.hpp"
 #include "storage.hpp"
+#include "theme.hpp"
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -20,6 +21,26 @@ void render(App&a){Capture r;a.render(r);for(size_t i=0;i<a.buttons.size();i++)f
 std::string key(Command c){return std::to_string(int(c.action))+":"+std::to_string(c.a)+":"+std::to_string(c.b);}
 void reachable(App&a){render(a);auto buttons=a.buttons;if(!a.buttonNavigation())a.keyDown(Key::Select,100);std::set<std::string> seen;for(size_t i=0;i<buttons.size()+2;i++){a.keyDown(Key::Right,110+i);a.keyUp();render(a);seen.insert(key(a.focusedCommand()));}for(auto b:buttons)if(b.enabled)assert(seen.count(key(b.command)));}
 int main(){
+ // Theme rotation is a global, persisted five-notch preference; old v9 saves
+ // load at 1x.  Native and browser use the same orbital phase multiplier.
+ {App speeds;speeds.dispatch({Action::Theme});render(speeds);
+  assert(std::count_if(speeds.buttons.begin(),speeds.buttons.end(),[](auto b){return b.command.action==Action::ThemeSpeed;})==5);
+  for(int i=0;i<5;++i){speeds.dispatch({Action::ThemeSpeed,i});assert(speeds.model.state.themeSpeedStep==i);
+      State recovered;uint32_t seq=0;assert(decode(encode(speeds.model.state),recovered,seq)&&recovered.themeSpeedStep==i);}
+  assert(themeSample(31,.32f,.23f,400.f/240,25000,0)!=themeSample(31,.32f,.23f,400.f/240,25000,4));
+  auto v9=encode(speeds.model.state);v9.resize(v9.size()-4);
+  auto put=[&](int at,uint32_t value){for(int i=0;i<4;++i)v9[at+i]=(value>>(i*8))&255;};
+  put(8,9);put(16,static_cast<uint32_t>(v9.size()-24));put(20,0);
+  uint32_t checksum=0xffffffff;for(auto byte:v9){checksum^=byte;for(int i=0;i<8;++i)checksum=(checksum>>1)^(0xedb88320u&(0u-(checksum&1)));}put(20,~checksum);
+  State recovered;uint32_t seq=0;assert(decode(v9,recovered,seq)&&recovered.themeSpeedStep==0);
+ }
+ // Newly written player profile names are capped at eight UTF-8 codepoints.
+ {Model p;assert(p.addProfile("CassandraLong"));assert(p.state.profiles.back().name=="Cassandr");
+  int id=static_cast<int>(p.state.profiles.size())-1;
+  assert(p.renameProfile(id,"Moonlit Mage"));assert(p.state.profiles[id].name=="Moonlit");
+  // Existing pre-cap profile data is still loadable and editable.
+  p.state.profiles[id].name="Legacy Extended";
+  assert(validState(p.state));}
  // Shared defeat uses a per-commander, per-teammate threshold; Giant poison is 15.
  for(int heads:{1,2,3}){Model m;m.state.setup={heads*2,40,true,true,false,heads};assert(m.start());auto&g=m.state.game;
   assert(m.poisonLimit()==(heads==1?10:15));m.change(heads-1,Counter::Poison,m.poisonLimit()-1);for(int i=0;i<heads;++i)assert(!m.atThreshold(i));m.change(0,Counter::Poison,1);for(int i=0;i<heads;++i)assert(m.atThreshold(i));assert(!m.atThreshold(heads));m.undo();
@@ -32,6 +53,30 @@ int main(){
   auto saved=encode(m.state);State r;uint32_t sequence;assert(decode(saved,r,sequence)&&r.game.history==g.history);m.undo();assert(g.players[0].poison==0);m.redo();assert(g.players[0].poison==3);
   m.setInputTime(7000);m.change(0,Counter::Life,1);m.setInputTime(7100);m.change(1,Counter::Life,-1);assert(g.history.size()==3); // exact reversal removes the empty event
   m.setInputTime(10000);m.change(0,Counter::Poison,1);m.setInputTime(12000);m.change(0,Counter::Poison,1);assert(g.history.size()==5); // the gap boundary is exclusive
+ }
+ // Taking, removing, and transferring monarch/initiative are history events.
+ {Model m;m.state.setup={4,40,true,false,true};m.state.setup.turnEnabled=true;assert(m.start());auto&g=m.state.game;
+  assert(m.marker(1,false));assert(g.monarch==1&&g.history.size()==1&&g.history.back().kind==HistoryKind::Monarch&&g.history.back().turn==0);
+  assert(m.marker(2,true));assert(g.initiative==2&&g.history.size()==2&&g.history.back().kind==HistoryKind::Initiative);
+  auto bytes=encode(m.state);State restored;uint32_t seq;assert(!bytes.empty()&&decode(bytes,restored,seq));assert(restored.game.history==g.history);
+  m.undo();assert(g.initiative==-1&&g.history.size()==1);m.redo();assert(g.initiative==2&&g.history.size()==2);
+  assert(m.marker(1,false));assert(g.monarch==-1&&g.history.size()==3&&g.history.back().before==1&&g.history.back().after==0);
+  g.config.turnEnabled=false;assert(m.marker(3,false));assert(g.history.size()==4&&g.history.back().turn==0);
+ }
+ // Offsets in both native displays distinguish a shadow from a stroke.
+ {App a;a.model.state.setup.players=4;a.model.state.setup.life=40;a.model.state.setup.commander=true;
+  assert(a.model.start());a.page=Page::Game;
+  auto& pl=a.model.state.game.players[0];pl.poison=2;pl.energy=3;pl.experience=4;
+  Capture c;a.render(c);
+  // Upper badge shade sits 0.85px right/1px down from the ivory face.
+  bool badgeShadow=false;
+  for(const auto& shade:c.words)if(shade.n==0&&shade.text=="PA")
+      for(const auto& face:c.words)if(face.n==0&&face.text=="PA"&&std::abs(shade.x-face.x-.85f)<.02f&&std::abs(shade.y-face.y-1.f)<.02f)badgeShadow=true;
+  assert(badgeShadow);
+  // Lower control panel name retains a colored face and dark offset glyph.
+  auto nameShadow=std::find_if(c.words.begin(),c.words.end(),[](auto w){return w.n==1 && w.text=="Player A" && std::abs(w.x-12.95f)<.02f&&std::abs(w.y-9.20f)<.02f;});
+  assert(nameShadow!=c.words.end());
+  assert(std::any_of(c.words.begin(),c.words.end(),[](auto w){return w.n==1&&w.text=="PA"&&std::abs(w.y-37.15f)<.02f;}));
  }
  // Touch and hardware shortcuts visibly flash the actual adjustment button.
  {App a;a.model.state.setup={4,40,true,true,true};a.model.start();a.page=Page::Game;
@@ -48,6 +93,22 @@ int main(){
 
  assert(defaults().presets.empty());
  for(int n=2;n<=6;n++)for(int k=0;k<layoutCount(n);k++){auto panels=playerPanels(n,k);Config c;c.players=n;chooseLayout(c,k);assert(validConfig(c));if(n==5&&k<2)for(float y:{20.f,125.f}){float width=-1;for(int i=0;i<n;i++)if(panels[i].y==y){if(width<0)width=panels[i].w;assert(std::abs(width-panels[i].w)<.001f);}}if(n==6&&k==0)for(int i=0;i<n;i++)assert(panels[i].h==99&&c.rotations[i]==(panels[i].y==20?2:0));}
+ // Six-player side sections: exactly two physically compact, rotated side
+ // panels and four larger central seats. The compact seats keep life below
+ // the name; ordinary central panels retain the upper-right life arrangement.
+ {auto cards=playerPanels(6,1);Config c;c.players=6;chooseLayout(c,1);
+  int compact=0,standard=0;float minCentralArea=1e9f,maxSideArea=0;
+  for(int i=0;i<6;++i){const Rect r=cards[i];float area=r.w*r.h;
+      bool side=r.w<=76.5f;
+      if(side){++compact;maxSideArea=std::max(maxSideArea,area);assert(c.rotations[i]==(r.x<200?1:3));}
+      else{++standard;minCentralArea=std::min(minCentralArea,area);assert(r.h==99);}
+  }
+  assert(compact==2&&standard==4&&maxSideArea<minCentralArea);
+  App a;a.model.state.setup=c;a.model.state.setup.commander=true;assert(a.model.start());a.page=Page::Game;
+  for(int i=0;i<6;i++){auto&pl=a.model.state.game.players[i];pl.name="Cassandra";pl.color=i;pl.damage[(i+1)%6][0]=10;}
+  Capture picture;a.render(picture);
+  assert(std::any_of(picture.upper.begin(),picture.upper.end(),[](const auto& b){return b.second==0x79a7eb;}));
+ }
  App a;for(int i=0;i<10;i++)assert(a.model.addProfile("Named "+std::to_string(i)));assert(!a.model.addProfile("Eleventh"));a.model.state.setup={6,40,true,true,true};chooseLayout(a.model.state.setup,0);assert(a.model.start());auto&g=a.model.state.game;a.page=Page::Game;g.players[0].damage[2][1]=18;g.timerRunning=true;g.timerDeadline=1800001000;g.timerRemaining=1000;
  a.dispatch({Action::Clock});a.dispatch({Action::Partners});assert(!g.config.partners&&g.players[0].damage[2][1]==18);a.dispatch({Action::Partners});assert(g.config.partners);a.dispatch({Action::Commander});a.dispatch({Action::Partners});assert(g.config.partners);a.dispatch({Action::Commander});assert(g.players[0].damage[2][1]==18);a.dispatch({Action::Back});
  a.dispatch({Action::GameLayout});render(a);assert(std::none_of(a.buttons.begin(),a.buttons.end(),[](auto b){return b.command.action==Action::PlayerCount;}));auto before=g;a.dispatch({Action::Layout,1});a.dispatch({Action::PlayerCount,2});assert(g.config.players==6&&g.config.layout==1);before.config=g.config;assert(before==g);assert(g.timerRunning&&g.timerDeadline==1800001000);a.dispatch({Action::Back});
@@ -64,6 +125,37 @@ int main(){
   replace.dispatch({Action::NewGame});assert(replace.modalOpen());replace.dispatch({Action::Cancel});assert(replace.model.state.game==old);
   replace.dispatch({Action::NewGame});replace.dispatch({Action::Confirm});assert(!replace.modalOpen()&&replace.page==Page::Rules);
   replace.dispatch({Action::Begin});assert(!replace.modalOpen()&&replace.page==Page::Game&&replace.model.state.game.history.empty());}
+ // Disabled turn tracking always records turn zero, independent of the
+ // dormant internal turn value. Monarch and initiative losses/transfers are
+ // ordered, serialized, and undone/redone together with their acquisitions.
+ {Model roles;roles.state.setup.turnEnabled=false;assert(roles.start());
+  auto& g=roles.state.game;g.turn=17;
+  assert(roles.change(0,Counter::Life,-2));
+  assert(roles.change(0,Counter::Poison,1));
+  assert(g.history.size()==2&&g.history[0].turn==0&&g.history[1].turn==0);
+  assert(roles.marker(0,false));
+  assert(g.monarch==0&&g.history.size()==3&&g.history.back().turn==0&&g.history.back().before==0&&g.history.back().after==1);
+  assert(roles.marker(1,false));
+  assert(g.monarch==1&&g.history.size()==5);
+  assert(g.history[3].player==0&&g.history[3].kind==HistoryKind::Monarch&&g.history[3].before==1&&g.history[3].after==0);
+  assert(g.history[4].player==1&&g.history[4].before==0&&g.history[4].after==1&&g.history[4].turn==0);
+  assert(roles.undo());assert(g.monarch==0&&g.history.size()==3);
+  assert(roles.redo());assert(g.monarch==1&&g.history.size()==5);
+  assert(roles.marker(1,false));assert(g.monarch==-1&&g.history.size()==6);
+  assert(g.history.back().player==1&&g.history.back().before==1&&g.history.back().after==0);
+  assert(roles.marker(0,true));assert(roles.marker(1,true));
+  assert(g.initiative==1&&g.history.size()==9&&g.history[7].player==0&&g.history[7].before==1&&g.history[7].after==0);
+  assert(g.history[8].player==1&&g.history[8].before==0&&g.history[8].after==1);
+  assert(roles.marker(1,true));assert(g.initiative==-1&&g.history.size()==10&&g.history.back().before==1&&g.history.back().after==0);
+  for(const auto& event:g.history)assert(event.turn==0);
+  State decoded;uint32_t sequence=0;assert(decode(encode(roles.state),decoded,sequence));
+  assert(decoded.game.history==g.history);
+  // Previously saved -1 turn attribution is displayed as zero without
+  // altering the decoded historical metadata.
+  g.config.turnEnabled=true;g.history[0].turn=-1;
+  App display;display.model.state=roles.state;display.page=Page::History;
+  Capture rendered;display.render(rendered);assert(rendered.has("Turn #")&&!rendered.has("?"));
+ }
  // Events retain the actual turn number, including after serialization;
  // all and single history views show the chronological Turn # table.
  {App timeline;timeline.model.state.setup.turnEnabled=true;assert(timeline.model.start());
@@ -96,8 +188,8 @@ int main(){
  // The visual transition never delays the authoritative life total.
  a.tick(10000);render(a);a.dispatch({Action::Change,-11,int(Counter::Life)});int target=g.players[0].life;render(a);a.tick(10100);Capture rolling;a.render(rolling);assert(g.players[0].life==target);a.tick(10500);render(a);
  // Profile creation includes color before assigning; edits update every linked identity.
- App profiles;profiles.dispatch({Action::NewGame});assert(profiles.model.state.setup.themeColors==31);profiles.dispatch({Action::Players});profiles.dispatch({Action::PlayerCount,3});assert(profiles.model.state.setup.commander&&profiles.model.state.setup.life==40);profiles.dispatch({Action::PlayerCount,2});assert(!profiles.model.state.setup.commander&&profiles.model.state.setup.life==20);profiles.dispatch({Action::Seats});profiles.dispatch({Action::PickSeat,0});profiles.dispatch({Action::NewProfile});profiles.submitText("Zara",true);assert(profiles.page==Page::Profile&&profiles.model.state.seats[0]==-1);profiles.dispatch({Action::Color,7});profiles.dispatch({Action::ProfileDone});assert(profiles.page==Page::Seats&&profiles.model.state.seats[0]==6);profiles.dispatch({Action::Begin});auto& pg=profiles.model.state.game;assert(pg.players[0].profileIndex==6&&pg.players[0].color==7);profiles.model.change(0,Counter::Life,-3);assert(profiles.model.renameProfile(6,"Zelda")&&profiles.model.colorProfile(6,1));assert(pg.players[0].name=="Zelda"&&pg.players[0].color==1);profiles.model.undo();assert(pg.players[0].name=="Zelda"&&pg.players[0].color==1);profiles.model.redo();assert(pg.players[0].profileIndex==6);State persisted;uint32_t seq;assert(decode(encode(profiles.model.state),persisted,seq)&&persisted.game.players[0].profileIndex==6);auto oldV6=encode(profiles.model.state);oldV6.resize(oldV6.size()-24-8*profiles.model.state.game.history.size());auto put=[&](int offset,uint32_t value){for(int i=0;i<4;++i)oldV6[offset+i]=(value>>(i*8))&255;};put(8,6);put(16,oldV6.size()-24);put(20,0);uint32_t checksum=0xffffffff;for(auto byte:oldV6){checksum^=byte;for(int i=0;i<8;++i)checksum=(checksum>>1)^(0xedb88320u&(0u-(checksum&1)));}put(20,~checksum);assert(decode(oldV6,persisted,seq));assert(persisted.game.players[0].profileIndex==6);
- profiles.model.addProfile("Second");profiles.model.assignActive(1,7);profiles.model.deleteProfile(6);assert(pg.players[1].profileIndex==6);profiles.model.renameProfile(6,"Second updated");assert(pg.players[1].name=="Second updated");assert(pg.players[0].profileIndex==-1&&pg.players[0].name=="Zelda");profiles.model.undo();assert(pg.players[0].profileIndex==-1);
+ App profiles;profiles.dispatch({Action::NewGame});assert(profiles.model.state.setup.themeColors==31);profiles.dispatch({Action::Players});profiles.dispatch({Action::PlayerCount,3});assert(profiles.model.state.setup.commander&&profiles.model.state.setup.life==40);profiles.dispatch({Action::PlayerCount,2});assert(!profiles.model.state.setup.commander&&profiles.model.state.setup.life==20);profiles.dispatch({Action::Seats});profiles.dispatch({Action::PickSeat,0});profiles.dispatch({Action::NewProfile});profiles.submitText("Zara",true);assert(profiles.page==Page::Profile&&profiles.model.state.seats[0]==-1);profiles.dispatch({Action::Color,7});profiles.dispatch({Action::ProfileDone});assert(profiles.page==Page::Seats&&profiles.model.state.seats[0]==6);profiles.dispatch({Action::Begin});auto& pg=profiles.model.state.game;assert(pg.players[0].profileIndex==6&&pg.players[0].color==7);profiles.model.change(0,Counter::Life,-3);assert(profiles.model.renameProfile(6,"Zelda")&&profiles.model.colorProfile(6,1));assert(pg.players[0].name=="Zelda"&&pg.players[0].color==1);profiles.model.undo();assert(pg.players[0].name=="Zelda"&&pg.players[0].color==1);profiles.model.redo();assert(pg.players[0].profileIndex==6);State persisted;uint32_t seq;assert(decode(encode(profiles.model.state),persisted,seq)&&persisted.game.players[0].profileIndex==6);auto oldV6=encode(profiles.model.state);oldV6.resize(oldV6.size()-28-8*profiles.model.state.game.history.size());auto put=[&](int offset,uint32_t value){for(int i=0;i<4;++i)oldV6[offset+i]=(value>>(i*8))&255;};put(8,6);put(16,oldV6.size()-24);put(20,0);uint32_t checksum=0xffffffff;for(auto byte:oldV6){checksum^=byte;for(int i=0;i<8;++i)checksum=(checksum>>1)^(0xedb88320u&(0u-(checksum&1)));}put(20,~checksum);assert(decode(oldV6,persisted,seq));assert(persisted.game.players[0].profileIndex==6);
+ profiles.model.addProfile("Second");profiles.model.assignActive(1,7);profiles.model.deleteProfile(6);assert(pg.players[1].profileIndex==6);profiles.model.renameProfile(6,"Second u");assert(pg.players[1].name=="Second u");assert(pg.players[0].profileIndex==-1&&pg.players[0].name=="Zelda");profiles.model.undo();assert(pg.players[0].profileIndex==-1);
  profiles.dispatch({Action::Clock});render(profiles);for(auto action:{Action::Commander,Action::Partners,Action::TurnToggle,Action::TimerToggle,Action::ClockToggle})assert(std::any_of(profiles.buttons.begin(),profiles.buttons.end(),[&](const auto& b){return b.command.action==action;}));assert(std::none_of(profiles.buttons.begin(),profiles.buttons.end(),[](const auto&b){return b.command.action==Action::GameTrackers;}));bool clock=pg.config.clockEnabled;profiles.dispatch({Action::ClockToggle});assert(pg.config.clockEnabled!=clock);
  pg.config.commander=pg.config.partners=true;pg.players[0].life=40;pg.players[0].damage[1]={20,20};assert(!profiles.model.atThreshold(0));pg.players[0].damage[1][1]=21;assert(profiles.model.atThreshold(0));pg.config.partners=false;assert(!profiles.model.atThreshold(0));pg.players[0].damage[1][0]=21;assert(profiles.model.atThreshold(0));profiles.page=Page::Game;Capture death;profiles.render(death);assert(std::any_of(death.upper.begin(),death.upper.end(),[](auto box){return box.second==0xb8c3cb;}));
  // A large deliberate tilt must move a settled body; leveling must let it settle again.
@@ -115,5 +207,5 @@ int main(){
  }
  assert(tiltChanged>0);for(auto sound:{Sound::DiceShake,Sound::DiceTap,Sound::CoinClink}){auto pcm=soundPcm(sound);assert(std::any_of(pcm.begin(),pcm.end(),[](auto x){return x!=0;}));}
  auto bytes=encode(a.model.state);State restored;uint32_t sequence;assert(decode(bytes,restored,sequence));assert(encode(restored)==bytes);std::ifstream fixture("tests/fixtures/v06-save.bin",std::ios::binary);std::vector<uint8_t> old((std::istreambuf_iterator<char>(fixture)),{});assert(decode(old,restored,sequence));assert(sequence==42&&restored.setup.layout==3&&restored.game.config.layout==3&&restored.game.players[0].damage[2][1]==17&&restored.game.players[1].name=="Brenda");assert(restored.presets.empty());
- std::cout<<"PASS: native menus/navigation, partners/layout/profile preservation, poison death, rolling life, expanded history, save v9/migration; 840 physical rolls, longest "<<longest<<"s, cocked "<<cocked<<", tilt changed "<<tiltChanged<<" outcomes. Max quads "<<maximum<<".\n";
+ std::cout<<"PASS: native menus/navigation, partners/layout/profile preservation, poison death, rolling life, expanded history, save v10/migration; 840 physical rolls, longest "<<longest<<"s, cocked "<<cocked<<", tilt changed "<<tiltChanged<<" outcomes. Max quads "<<maximum<<".\n";
 }

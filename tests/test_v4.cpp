@@ -40,7 +40,7 @@ std::vector<uint8_t> legacyBytes(std::vector<uint8_t> b,int version){
     removed.push_back(p+72);p+=76; // game config
     size_t q=p+8; // monarch / initiative, then six player records
     for(int i=0;i<6;++i){int bytes=read(q);q+=4+bytes+68;}
-    q+=4;int events=read(q);b.resize(b.size()-24-events*8); // v7 links, v8 kinds and v9 event turns
+    q+=4;int events=read(q);b.resize(b.size()-28-events*8); // v7 links, v8 kinds, v9 event turns, v10 theme speed
     for(auto it=removed.rbegin();it!=removed.rend();++it)b.erase(b.begin()+*it,b.begin()+*it+4);
     if(version==1)b.resize(b.size()-56);
     if(version==2)b.resize(b.size()-52);
@@ -64,7 +64,7 @@ int main(){
     m.renameProfile(6,"Player A");m.start();assert(playerAbbreviation(m.state.game.players[1],1)=="PL");
     App app;app.model.state.setup.commander=true;app.model.state.setup.timerEnabled=true;app.model.start();app.page=Page::Game;
     auto& g=app.model.state.game;g.timerRemaining=1500;g.timerDeadline=1800001500;g.players[1].damage[0][0]=10;g.players[0].damage[1][0]=10;
-    Capture board;app.render(board);assert(board.has("Commander damage"));assert(board.has("PB:10"));assert(std::any_of(board.words.begin(),board.words.end(),[](auto w){return w.text=="PB:10"&&w.color==playerColor(1);}));
+    Capture board;app.render(board);assert(!board.has("Commander damage"));assert(board.has("PB:10"));assert(std::any_of(board.words.begin(),board.words.end(),[](auto w){return w.text=="PB:10"&&w.color==playerColor(1);}));
     for(int i=0;i<20;++i){app.model.setInputTime(1000+i*3000);app.model.change(0,Counter::Life,-1);}Capture history;app.render(history);assert(std::any_of(history.words.begin(),history.words.end(),[](auto w){return w.screen==0&&w.text.find("→")!=std::string::npos&&w.y>=35;}));
     assert(!button(app,Action::QuickTurn));app.dispatch({Action::QuickTurn,1});assert(g.turn==0&&!g.config.turnEnabled);g.config.turnEnabled=true;
     for(int tab=0;tab<3;++tab){app.tab=tab;Capture view;app.render(view);assert(button(app,Action::QuickTurn));assert(button(app,Action::Float));assert(button(app,Action::Dice));}

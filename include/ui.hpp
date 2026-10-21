@@ -27,7 +27,7 @@ enum class Action {
     Color, DeleteProfile, Presets, UsePreset, SavePreset, DeletePreset, Page,
     Source, Slot, Monarch, Initiative, Back, Confirm, Cancel, Exit, Dice, Die, Roll,
     PlayerCount, Layout, Options, TurnToggle, TimerToggle, TimerInput, Clock, TurnInput, TimerPause, ClockToggle,
-    HistoryAll, HistoryScroll, ResetTable, ThemeColor, SetLife, QuickTurn, Float, ChangeFloat, ResetFloat,
+    HistoryAll, HistoryScroll, ResetTable, ThemeColor, ThemeSpeed, SetLife, QuickTurn, Float, ChangeFloat, ResetFloat,
     GameLayout, LayoutDone, ManageProfiles, GameTrackers, ProfileDone
 };
 struct Command {Action action=Action::None;int a=0,b=0;bool operator==(const Command& o)const{return action==o.action&&a==o.a&&b==o.b;}};
@@ -120,6 +120,7 @@ private:
     void bottom();
     void identityFill(Rect area,const Player& player,bool subdued=false);
     void identityText(const std::string& text,float x,float y,float size,const Player& player,Align align=Align::Left,float width=0);
+    void identityShadowText(const std::string& text,float x,float y,float size,const Player& player,Align align=Align::Left,float width=0);
     void playerStrip();
     void footer();
     void quickControls();

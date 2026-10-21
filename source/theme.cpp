@@ -18,25 +18,26 @@ std::vector<ThemePoint> themePoints(int mask,float aspect){
         out.push_back({x,y,colors[i]});
     }return out;
 }
-Color themeSample(int mask,float x,float y,float aspect,uint64_t time){
+Color themeSample(int mask,float x,float y,float aspect,uint64_t time,int speedStep){
     // Many small raster glyphs sample the same theme every frame. Cache the
     // slow orbit and 1D wave terms; interpolate the precomputed wave at the
     // sample location. This keeps the 3DS CPU workload essentially static.
     struct MotionPoint {float x,y,weight;Color color;};
     struct Cache {
-        int mask=-1,count=0;
+        int mask=-1,count=0,speedStep=-1;
         uint64_t time=0;
         float aspect=0;
         std::array<MotionPoint,5> points{};
         std::array<float,129> waveX{},waveY{};
     };
     static Cache cache;
-    if(cache.mask!=mask||cache.time!=time||cache.aspect!=aspect){
-        cache.mask=mask;cache.time=time;cache.aspect=aspect;
+    speedStep=std::clamp(speedStep,0,4);
+    if(cache.mask!=mask||cache.time!=time||cache.aspect!=aspect||cache.speedStep!=speedStep){
+        cache.mask=mask;cache.time=time;cache.aspect=aspect;cache.speedStep=speedStep;
         auto base=themePoints(mask,aspect);
         cache.count=static_cast<int>(base.size());
         constexpr float tau=6.28318530718f;
-        float phase=tau*float(time%125000)/125000.f;
+        float phase=tau*static_cast<float>(std::fmod(double(time)*(1.0+.5*speedStep),125000.0)/125000.0);
         float cs=std::cos(phase),sn=std::sin(phase);
         for(int j=0;j<cache.count;++j){
             const auto& pt=base[j];float ox=(pt.x-.5f)*aspect,oy=pt.y-.5f;
@@ -77,7 +78,7 @@ void Renderer::gradient(Rect r,Color tl,Color tr,Color bl,Color br){
 }
 Color ThemeRenderer::contrast(Color c,float x,float y)const{
     if(c!=0xf0f2df&&c!=0xa4b6af&&c!=0x82d8a2&&c!=0xfa9d8d&&c!=0xc48cf1&&c!=0xffda58&&c!=0xc8d0dc&&!(c==0xc5dc9b&&textMode))return c;
-    Color sample=themeSample(mask,x/width,y/240,width/240,now);
+    Color sample=themeSample(mask,x/width,y/240,width/240,now,speedStep);
     // Relative luminance is evaluated on the actual panel color.
     Color surface=mix(0x0a1218,sample,.30f);float luminance=0;
     const float weights[]={.2126f,.7152f,.0722f};int k=0;
@@ -114,7 +115,7 @@ void ThemeRenderer::box(Rect r,Color c,float radius){
     case 0xc5dc9b:strength=.68f;base=0xeeeece;break;
     default:target.box(r,c,radius);return;
     }
-    auto sample=[&](float x,float y){return mix(base,themeSample(mask,x/width,y/240,width/240,now),strength);};
+    auto sample=[&](float x,float y){return mix(base,themeSample(mask,x/width,y/240,width/240,now,speedStep),strength);};
     for(float y=r.y;y<r.y+r.h;y+=32)for(float x=r.x;x<r.x+r.w;x+=32){float w=std::min(32.0f,r.x+r.w-x),h=std::min(32.0f,r.y+r.h-y);
         target.gradient({x,y,w,h},sample(x,y),sample(x+w,y),sample(x,y+h),sample(x+w,y+h));}
 }

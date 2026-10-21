@@ -11,6 +11,14 @@ vm.runInNewContext(html.split('<script>')[1].split('</script>')[0].replace('rend
 function buttons(){return [...svg().matchAll(/<g class="tap ([^"]*)" data-a="([^"]*)" data-p="([^"]*)"[^>]*aria-label="([^"]*)"[^>]*><rect x="([^"]*)" y="([^"]*)" width="([^"]*)" height="([^"]*)"/g)].map(m=>({disabled:m[1].includes('btn-disabled'),a:m[2],p:JSON.parse(decodeURIComponent(m[3])),label:m[4],r:m.slice(5).map(Number)}))}
 function click(a,p){const b=buttons().find(b=>b.a===a&&(p===undefined||JSON.stringify(b.p)===JSON.stringify(p)));assert(b,`Missing button ${a} ${p}`);element('#bottom').handlers.click({preventDefault(){},target:{closest(){return {dataset:{a:b.a,p:encodeURIComponent(JSON.stringify(b.p))},classList:{contains(){return b.disabled}}}}}})}
 function disjoint(){let bs=buttons();for(let i=0;i<bs.length;i++){let [a,b,w,h]=bs[i].r;assert(a>=0&&b>=0&&a+w<=320&&b+h<=240);for(let j=i+1;j<bs.length;j++){let [c,d,v,t]=bs[j].r;assert(Math.min(a+w,c+v)<=Math.max(a,c)||Math.min(b+h,d+t)<=Math.max(b,d),`${bs[i].a} overlaps ${bs[j].a}`)}}}
+// Five tappable slider notches preserve a global speed selection in browser
+// saves without changing the selected WUBRG color mask.
+act('theme');for(let notch=0;notch<5;notch++){
+ click('themeSpeed',[notch]);assert.equal(x.state.themeSpeedStep,notch);
+ assert.equal(JSON.parse(store.get('command-deck-v05')).themeSpeedStep,notch);
+ assert.equal(buttons().filter(b=>b.a==='themeSpeed').length,5);
+}
+click('themeSpeed',[0]);click('back');
 click('new');click('layouts');click('players',[3]);assert.equal(x.state.setup.layout,2);assert(x.state.setup.commander);click('players',[5]);assert.equal(x.state.setup.layout,1);assert(x.state.setup.commander);click('players',[4]);click('back');click('start');assert(!buttons().some(b=>b.a==='turn'||b.p[0]==='gameTurn'));act('turn',1);assert.equal(x.state.game.turn,0);assert(!x.state.game.config.turnEnabled);
 // New game requires confirmation as soon as history exists, not at game start.
 const priorGame=x.state.game,priorLife=priorGame.players[0].life;priorGame.history.push({team:0,player:0,after:priorLife-1,delta:-1,type:'life'});const priorHistory=priorGame.history.length;
@@ -27,6 +35,47 @@ for(const running of [true,false]){
  let timer=JSON.stringify([g.timerRemaining,g.timerDeadline,g.timerRunning]);click('menu');click('reset');assert.equal(x.page,'resetConfirm');assert.equal(g.players[0].life,33);click('resetCancel');assert.equal(x.page,'menu');click('reset');click('resetConfirm');assert.equal(x.page,'game');
  assert.equal(JSON.stringify([g.timerRemaining,g.timerDeadline,g.timerRunning]),timer);assert.equal(g.turn,0);assert.equal(g.history.length,0);assert.equal(g.monarch,-1);assert.equal(g.initiative,-1);assert(g.floatPool.every(v=>v===0));assert(g.players.every(p=>p.life===40&&p.poison===0&&p.energy===0&&p.experience===0&&p.damage.every(a=>a.every(v=>v===0))));
 }
+// With turn tracking off, life, poison, and role changes all use turn zero.
+// Transfers record loss before acquisition, in a single undo/redo snapshot.
+{
+ let current=x.state.game;current.history=[];current.config.turnEnabled=false;current.turn=17;
+ act('select',0);act('life',-1);act('counter','poison',1);
+ assert.equal(current.history.length,2);
+ assert(current.history.every(e=>e.turn===0));
+ act('monarch');assert.equal(current.monarch,0);
+ assert.equal(current.history.at(-1).turn,0);
+ act('select',1);act('monarch');assert.equal(current.monarch,1);
+ assert.deepEqual(current.history.slice(-2).map(e=>[e.player,e.before,e.after,e.turn]),[[0,1,0,0],[1,0,1,0]]);
+ assert.equal(ctx.testHelpers.historyText(current.history.at(-2)),'Loses role');
+ assert.equal(ctx.testHelpers.historyText(current.history.at(-1)),'Takes role');
+ act('undo');current=x.state.game;assert.equal(current.monarch,0);assert.equal(current.history.length,3);
+ act('redo');current=x.state.game;assert.equal(current.monarch,1);assert.equal(current.history.length,5);
+ act('monarch');assert.equal(current.monarch,-1);
+ assert.equal(current.history.at(-1).before,1);
+ act('initiative');assert.equal(current.initiative,1);
+ act('select',0);act('initiative');assert.equal(current.initiative,0);
+ assert.deepEqual(current.history.slice(-2).map(e=>[e.player,e.before,e.after,e.turn]),[[1,1,0,0],[0,0,1,0]]);
+ act('initiative');assert.equal(current.initiative,-1);
+ assert.equal(ctx.testHelpers.historyText(current.history.at(-1)),'Loses role');
+ assert(current.history.every(e=>e.turn===0));
+ current.config.turnEnabled=true;
+ current.history[0].turn=-1;act('history');
+ assert(svg().includes('data-history-index="0"'));
+ assert(html.includes('String(Number.isInteger(e.turn)?Math.max(0,e.turn):0)'));
+ assert(!svg().includes('>?<'));
+ act('resume');current=x.state.game;current.config.turnEnabled=false;current.history=[];current.monarch=current.initiative=-1;g=current;
+}
+// Player names and abbreviations use offset silhouettes instead of strokes,
+// and each occupied tracker cell right-anchors its value/icons.
+{
+ g.players[0].poison=2;g.players[0].energy=3;g.players[0].experience=4;
+ x.render();const upper=element('#top').innerHTML,lower=element('#bottom').innerHTML;
+ assert(upper.includes('data-text-shadow="offset"')&&upper.includes('data-badge-ink="uniform"'));
+ assert(upper.includes('data-tracker-align="end"'));
+ assert(!upper.includes('stroke-width="1.65"'));
+ assert(lower.includes('data-control-name="true"')&&lower.includes('data-control-abbreviation="true"'));
+ const source=ctx.testHelpers.panels(4,0);assert(source.length===4);
+}
 // Inspect rendered allocations across every layout and density, including long values.
 let cases=0;
 for(let n=2;n<=6;n++)for(let k=0;k<(n===3?6:n===5?4:2);k++)for(const counters of [false,true])for(const commander of [false,true]){
@@ -37,9 +86,41 @@ for(let n=2;n<=6;n++)for(let k=0;k<(n===3?6:n===5?4:2);k++)for(const counters of
   const life=[...top.matchAll(/data-life-bounds="([^"]+)"/g)].map(m=>m[1].split(',').map(Number));
   const cmd=[...top.matchAll(/data-commander-bounds="([^"]+)"/g)].map(m=>m[1].split(',').map(Number));
   assert.equal(life.length,n);assert.equal(cmd.length,commander?n:0);
+  const names=[...top.matchAll(/data-name-bounds="([^"]+)" data-name-font="([^"]+)"/g)];
+  const trackers=[...top.matchAll(/data-tracker-bounds="([^"]+)"/g)].map(m=>m[1].split(',').map(Number));
+  const anchors=[...top.matchAll(/data-life-anchor="([^"]+)"/g)].map(m=>m[1]);
+  const cols=[...top.matchAll(/data-commander-columns="(\d+)"/g)].map(m=>+m[1]);
+  assert.equal(names.length,n);assert.equal(trackers.length,n);assert.equal(anchors.length,n);
+  assert.equal(cols.length,commander?n:0);assert(cols.every(v=>v===2));
+  const raw=ctx.testHelpers.panels(n,k),rot=ctx.testHelpers.orientations(n,k,raw);
+  for(let i=0;i<n;i++){
+    const width=rot[i]%2?raw[i][3]:raw[i][2],height=rot[i]%2?raw[i][2]:raw[i][3];
+    let [nx,ny,nw]=names[i][1].split(',').map(Number),font=+names[i][2];
+    const compactSide=n===6&&k===1&&raw[i][2]<=76.5;
+    assert(font<=10&&font>0);
+    if(compactSide){assert(font>=8&&nx+nw<=width-6.0+.01);}else assert(nx+nw<=width/2+.001);
+    const [lx,ly,lw,lh]=life[i],[tx,ty,tw]=trackers[i];
+    assert(Math.abs(tx+tw-(width-6))<.01);
+    if(compactSide){assert.equal(anchors[i],'end');assert(ly===24&&Math.abs(lx+lw-(width-6))<.01);assert(Math.abs(tx-(width/3+2))<.01)}
+    else{assert.equal(anchors[i],'end');assert(ly===5&&lx+lw<=width-6+.01&&lx+lw>=width-6-.01);assert(lh>=height/2);assert(Math.abs(tx-(width/3+2))<.01)}
+    if(commander){const [cx,cy,cw,ch]=cmd[i];assert(cx===tx&&cw===tw&&Math.abs(cy+ch-(height-5))<.01)}
+  }
   life.forEach(([lx,ly,lw,lh],i)=>{assert(lw>0&&lh>=14);if(commander){let [cx,cy,cw,ch]=cmd[i];assert(ly+lh<cy||lx+lw<cx);assert(cw>0&&ch>=19);}});
   assert(!/NaN|Infinity|undefined/.test(top));disjoint();cases++;
  }
+}
+// Side-sections geometry has four larger central seats and just two compact sides.
+{const rs=ctx.testHelpers.panels(6,1),angles=ctx.testHelpers.orientations(6,1,rs);
+ const side=rs.filter(r=>r[2]<90),centers=rs.filter(r=>r[2]>=90);
+ assert.equal(side.length,2);assert.equal(centers.length,4);
+ assert(side.every(r=>r[2]*r[3]<Math.min(...centers.map(c=>c[2]*c[3]))));
+ Object.assign(g.config,{players:6,layout:1,commander:true});g.players.forEach((p,i)=>Object.assign(p,{profile:true,color:i%10,name:'Cassandra',damage:Array.from({length:6},()=>[20,0])}));
+ x.render();const top=element('#top').innerHTML;
+ assert.equal((top.match(/data-panel-layout="compact-side"/g)||[]).length,2);
+ assert.equal((top.match(/data-panel-layout="standard"/g)||[]).length,4);
+ assert.equal((top.match(/data-commander-columns="2"/g)||[]).length,6);
+ assert.equal((top.match(/data-cell-center=/g)||[]).length,24);
+ assert.equal((top.match(/url\(#pairInk/g)||[]).length>0,true);
 }
 // Four-player quadrant order must be A bottom-left, B bottom-right, C top-right, D top-left.
 Object.assign(g.config,{players:4,layout:0});x.render();let transforms=[...element('#top').innerHTML.matchAll(/<g transform="translate\((4|203),(20|125)\) /g)].map(m=>[+m[1],+m[2]]);assert.deepEqual(transforms,[[4,125],[203,125],[203,20],[4,20]]);
@@ -81,8 +162,8 @@ click('menu');click('clock');for(let key of ['commander','partners','turnEnabled
 live=x.state.game;Object.assign(live.config,{players:6,commander:true,partners:true,life:40});live.players.forEach(p=>{p.life=40;p.poison=0;p.damage=Array.from({length:6},()=>[0,0])});act('resume');live.players[0].damage[1]=[20,20];x.render();assert(!element('#top').innerHTML.includes('data-skull-row'));live.players[0].damage[1][1]=21;x.render();assert(element('#top').innerHTML.includes('data-skull-row'));live.config.partners=false;x.render();assert(!element('#top').innerHTML.includes('data-skull-row'));live.players[0].damage[1][0]=21;x.render();assert(element('#top').innerHTML.includes('data-skull-row'));live.config.commander=false;x.render();assert(!element('#top').innerHTML.includes('data-skull-row'));
 // Quarter-life flames are brighter; death always supersedes them.
 live.players[0].life=11;x.render();assert(element('#top').innerHTML.includes('data-flame="half"'));live.players[0].life=10;x.render();assert(element('#top').innerHTML.includes('data-flame="quarter"'));live.players[0].poison=10;x.render();assert(!element('#top').innerHTML.includes('data-flame="quarter"'));live.players[0].poison=0;
-// Show only the three largest sources, with a stable player-order tie break.
-live.config.commander=true;live.players[0].damage=Array.from({length:6},()=>[0,0]);for(let [i,n] of [[1,1],[2,4],[3,3],[4,2]])live.players[0].damage[i][0]=n;x.render();assert.deepEqual([...element('#top').innerHTML.matchAll(/data-commander-source="(\d+)"/g)].map(m=>+m[1]),[2,3,4]);
+// Show the strongest sources in at most two columns and two rows.
+live.config.commander=true;live.players[0].damage=Array.from({length:6},()=>[0,0]);for(let [i,n] of [[1,1],[2,4],[3,3],[4,2]])live.players[0].damage[i][0]=n;x.render();assert.deepEqual([...element('#top').innerHTML.matchAll(/data-commander-source="(\d+)"/g)].map(m=>+m[1]).slice(0,4),[2,3,4,1]);
 // Long values and names are bounded to their history cells in all-player view.
 live.history=[];for(let i=0;i<6;i++)for(let j=0;j<12;j++)live.history.push({team:i,player:i,delta:-99999,after:-9999,ts:now+j*3000,type:'life',src:-1,slot:0});act('history');assert.equal((svg().match(/data-history-cell/g)||[]).length,5);assert(svg().includes('data-scroll-arrows="true"'));assert(buttons().some(b=>b.a==='redo'));assert(!/NaN|Infinity/.test(svg()));click('histPlayer',[0]);disjoint();click('histScroll',[1]);assert(!buttons().find(b=>b.a==='histScroll'&&b.p[0]===-1).disabled);
 // Fit every numeral rectangle (including 6/9 underlines) within its actual face.
@@ -125,6 +206,9 @@ assert(!html.includes('animateTransform'));
 // A landed die wakes for deliberate tilt, moves physically, then settles when level.
 for(let sides of [2,4,6,8,10,12,20]){let body=new h.DiceBody(sides,987654);body.advance(4);assert(body.settled);let start=[...body.p],q=[...body.q];body.advance(.5,.65,.2);assert(Math.hypot(body.p[0]-start[0],body.p[1]-start[1])>.05,`d${sides} stayed locked`);body.advance(4,0,0);assert(body.settled,`d${sides} did not settle after leveling`);if(body.result)assert.equal(body.result,body.faceUp());}
 act('dice');act('die',6);act('roll');let launched=now;while(x.rolling&&now-launched<5000){now+=16;frame()}assert(!x.rolling);let resting=[...x.diceBody.p];act('tilt',.65,.2);for(let i=0;i<40;i++){now+=16;frame()}assert(Math.hypot(x.diceBody.p[0]-resting[0],x.diceBody.p[1]-resting[1])>.05);act('tilt',0,0);for(let i=0;i<250;i++){now+=16;frame()}assert(!x.rolling);
+// Legacy long names are displayed with eight codepoints; newly entered names
+// are also limited to eight without increasing the normal name font.
+{act('resume');let g=x.state.game;g.players[0].name='Cassandralong';x.render();let name=element('#top').innerHTML.match(/data-name-bounds="([^"]+)" data-name-font="([^"]+)"/);assert(name&&Number(name[2])<=10);g.players[0].name='Player A'}
 console.log(`PASS: menus, keyboard/D-pad routes, live profiles/layout/partners, preserved game data, rolling life digits, fixed single-digit sizing, expanded underlined history, poison death, ${cases} layout cases, top-screen physics and tilt.`);
 // v0.10: team loss, net history, purple poison, immediate feedback, and tray rotation.
 for(let heads of [1,2,3]){act('new');x.state.setup.players=heads*2;x.state.setup.heads=heads;x.state.setup.life=40;x.state.setup.commander=x.state.setup.partners=true;x.state.setup.linked=false;act('start');let g=x.state.game;

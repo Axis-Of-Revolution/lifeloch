@@ -1,15 +1,25 @@
-LIFELOCH v0.10.3 — SOURCE AND INTERACTIVE DEMO
+LIFELOCH v0.10.8 — SOURCE AND BROWSER DEMO
 
 CIA: NOT BUILT. No native executable is included.
 Native SDK, cross-compiler and packaging tools are unavailable.
 
 VERIFIED
+- Theme submenu 5-notch global 1x–3x rotation-speed slider with native save v10 and browser local persistence
+- Original home art wave 50% faster (12-second instead of 18-second cycle); same displacement
+- Disabled turn tracking logs turn 0; older missing turns displayed as 0
+- Monarch and initiative loss/transfer events appear in Game history with undo/redo and save migration
+- Colored/gradient player-name offset shadows on both screens, initials shadowed instead of stroked
+- Each right-side tracker value and role icon right-justified within its allocated cell
+- 6-seat side sections: two compact sides and four regular-format central panels
+- 8-point side-name legibility floor, colored/gradient names, centered 2×2 commander text
+- 6-seat side sections: two compact sides and four regular-format central panels
+- 8-point side-name legibility floor, colored/gradient names, centered 2×2 commander text
 - Oldest-first history tables with conditional Turn #/? column, touch drag, wheel and pixel arrow buttons, Undo/Redo
 - Drop shadow and thin outline on native/demo life totals, lighter defeated-life ink
 - Animated WUBRG theme orbit/wavering boundaries with cached native/browser sampling
-- Periodic 18-second scanline ripple on original pixelated home artwork
+- Periodic 12-second scanline ripple on original pixelated home artwork
 - Four-player commander/history/counter band alignment; square-cell flame loop and critical threshold
-- Game history turn separators, with version 9 persistent event metadata and old-save migration
+- Game history chronological Turn # column, with version 10 global theme-speed setting and old-save migration
 - Algorithmic 200x120-to-400x240 nearest-neighbor home artwork pixelation
 - Seamless 2.4-second native flame loop and layered tongue fill in the standalone demo
 - Harder soft-limited critical-hit PCM synthesized from corresponding native/browser formulas
@@ -32,7 +42,7 @@ VERIFIED
 - Browser click/key logic in a Node VM; 248 layout/density cases
 - 840 native rigid-body rolls: max 2.13s; 20 cocked landings correctly withheld a result
 - Tilt changes the trajectory and can change the result of an identical launch
-- Save format 8 roundtrip and legacy fixture migration
+- Save format 10 roundtrip and legacy fixture migration
 - Native and demo screen renders, home art, 16 layouts and physical roll frames
 - ZIP integrity and standalone demo/source identity
 
@@ -46,3 +56,5 @@ BROWSER VERIFIED
 
 
 Current home text and supplied artwork replace the old placeholders.
+
+Upper panels: right-aligned life (except the compact six-seat side-sections), left-aligned history, two-thirds-width trackers and fixed bottom 2x2 commander grid, eight-character names.

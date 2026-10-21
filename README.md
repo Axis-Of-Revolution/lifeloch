@@ -1,8 +1,107 @@
-# Lifeloch — v0.10.3
+# Lifeloch — v0.10.8
 
 Native Nintendo 3DS game tracker with a standalone offline browser demo. The dark medieval serif interface, raster numerals, WUBRG themes, and existing player layouts remain the visual baseline.
 
 Open `dist/Lifeloch-v0.10-Demo.html`. It contains its artwork, font, audio synthesis, and scripts; no server or external assets are needed. It is a separate browser implementation, not a 3DS emulator. Existing browser saves retain their storage key.
+
+## v0.10.8 adjustable theme motion
+
+- The Theme submenu adds a five-position notched speed slider: 1×, 1.5×, 2×, 2.5×, and 3×. It defaults to the original 1× and persists globally in native save v10 or existing browser saves.
+- The gradient centers and boundary ripples move at the selected speed in both the browser and 3DS renderers, with the same 125-second base orbital period.
+- The home-artwork wave cycle decreases from 18 to 12 seconds (50% faster oscillation) in both renderers; amplitude and pixelation remain unchanged.
+- The history/role fixes from this revision are included, as are the provisional panel styling changes.
+
+## v0.10.8 history fixes and v0.10.7 styling refinements
+
+- Game-history events record **turn 0** when the turn counter is disabled, even if
+  a previously configured turn number is nonzero. When the turn column is shown,
+  historic missing values also render as `0` instead of `?`; previously saved
+  data is left intact. Turn tracking ON continues to use the actual turn.
+- Taking, relinquishing, and transferring Monarch or Initiative now append
+  history events. Transfers generate **Loses role** then **Takes role**, using the
+  actual former and new owners; both entries share one undo/redo action.
+- No changes were made to legacy long-name display or the history-based
+  new-game confirmation scope, per the design decision.
+
+### Previous v0.10.7 styling refinements
+
+- Colored upper-screen player names and their lower-screen control-panel counterpart
+  now use a subtle pixel-compatible offset dark drop shadow while retaining any
+  solid or two-color profile gradient. Neither the font nor layout geometry changes.
+- Upper-screen profile abbreviations and the player selection abbreviations
+  in the lower control panel use displaced shadows instead of stroke outlines.
+  The shadow follows the glyphs, without an opaque backing rectangle.
+- Poison, energy, and experience values are **right-aligned within their own
+  allotted tracker cells**. Monarch and initiative icons are anchored to the
+  right edge of their allocated cell, including when only one icon is present.
+- The existing two-thirds-width tracker band and 2×2 commander grid remain
+  unchanged, as do the six-player compact-side exception and the game's style.
+- The browser and native C++ use matching placement offsets and glyph ink;
+  automated native and browser tests cover the updated design language.
+
+The deliberately retained scope is life/poison changes and monarch/initiative
+transitions; other counters are not added to game history.
+
+This version includes the previously reviewed upper/lower player-panel styling.
+
+## Proposed v0.10.6 panel corrections (previous review)
+
+The six-player **Side sections** arrangement now has **four central standard
+panels (111×99 each)** and **two smaller side panels (76×125 each)**. The
+side players rotate to local dimensions 125×76, and the side slots are
+vertically centered so that they do not dominate the center players.
+
+In the four central panels, the life total remains at upper-right, commander
+and trackers at lower-right, and history beneath the player identity at left.
+Only the two compact side panels move the life total **below the name**; the
+life total remains **right-justified**, and history remains **left-justified**.
+Compact side player names may extend beyond half the panel width and have a
+minimum displayed font size of 8; all name displays still limit to eight
+codepoints and never scale above their original default.
+
+Names now use their player/profile colors, including matching two-color
+identity gradients, instead of a generic ivory label. Commander grid text is
+centered within symmetric 2×2 cells using a more conservative font cap and
+extra inter-cell spacing.
+
+This layout is included in the v0.10.8 release. The compact
+side panels leave some themed background visible above and below them;
+confirm this sizing using the screenshot before approval.
+
+## Previous proposed v0.10.5 upper-screen placement (superseded)
+
+This earlier layout review has been incorporated into the current release. It continues the proposed
+v0.10.4 history/marker changes, but supersedes its upper-screen player-panel layout.
+
+- **Standard panels:** player identity and an eight-character displayed name fit
+  inside the left half of the panel. The player name font never grows above its
+  regular size, scaling down only if needed. Life totals are right aligned,
+  start at the top 5-pixel margin, and occupy the right half of the panel.
+- **Mini-history:** newest life/poison changes appear left justified immediately
+  under the player name, within the left third of the panel. The font is larger
+  than in v0.10.4. Equal 6-pixel left and right outer margins are preserved.
+- **Trackers and commander damage:** both use the right two-thirds; misc counters,
+  monarch, and initiative appear directly above the commander box. Commander
+  damage is fixed to the bottom of the panel with two text rows and two columns.
+  The four greatest nonzero sources are shown in row-major order; text is
+  dynamically reduced to fit each half-width cell, never requiring a third row.
+- **Life-space protection:** the normal panel preserves at least half of its
+  vertical extent for the upper life-display region. The rendered numerals retain
+  their original aspect ratio and may be smaller than half the panel's height
+  where the half-width constraint prevents taller digits.
+- **Six-player side sections exception:** all six panels place the life total
+  below the name. The bottom tracker/commander bands extend across the card,
+  which shortens the nearby mini-history if necessary. Commander remains 2x2.
+- **Profile edits:** new or renamed player profiles are limited to eight UTF-8
+  characters. Previously stored longer names remain valid in saved games and
+  are visually truncated to eight in the upper-screen player panels.
+
+## Proposed v0.10.4 refinements (also included)
+
+- Game history controls use Undo and adjacent Redo, pixel up/down arrows and Menu.
+- The empty state reads exactly "No game history recorded yet."
+- Monarch and initiative acquisitions are recorded as undoable history events.
+- Commander damage has no heading; miscellaneous trackers sit above it.
 
 ## v0.10.3 refinements
 

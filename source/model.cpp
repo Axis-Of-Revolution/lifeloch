@@ -55,7 +55,7 @@ State defaults() {
     return s;
 }
 bool validState(const State& s) {
-    if(s.themeColors<1||s.themeColors>31)return false;
+    if(s.themeColors<1||s.themeColors>31||s.themeSpeedStep<0||s.themeSpeedStep>4)return false;
     if(s.profiles.size()<6 || s.profiles.size()>MaxStoredProfiles || s.presets.size()>MaxPresets || !validConfig(s.setup) || !validConfig(s.game.config)) return false;
     for(const auto& p:s.profiles) if(p.name.empty() || cleanName(p.name)!=p.name || p.color<0 || p.color>=10) return false;
     for(const auto& p:s.presets) if(p.name.empty() || cleanName(p.name)!=p.name || !validConfig(p.config)) return false;
@@ -73,7 +73,7 @@ bool validState(const State& s) {
     for(int n:g.floatPool)if(n<0||n>MaxCounter)return false;
     if(g.turn<0||g.turn>9999||g.timerRemaining<0||g.timerRemaining>59940||g.timerDeadline>4102444800ull)return false;
     if(g.history.size()>256)return false;
-    for(auto& e:g.history) if(e.team<0||e.team>=g.config.players/g.config.heads||e.player<0||e.player>=g.config.players||e.player/g.config.heads!=e.team||e.before<MinLife||e.before>MaxLife||e.after<MinLife||e.after>MaxLife||e.source<-1||e.source>=g.config.players||e.slot<0||e.slot>1||e.seconds>g.elapsed||(e.kind!=HistoryKind::Life&&e.kind!=HistoryKind::Poison)||(e.turn < -1 || e.turn>9999)||(e.kind==HistoryKind::Poison&&(e.before<0||e.before>MaxCounter||e.after<0||e.after>MaxCounter||e.source!=-1)))return false;
+    for(auto& e:g.history) if(e.team<0||e.team>=g.config.players/g.config.heads||e.player<0||e.player>=g.config.players||e.player/g.config.heads!=e.team||e.before<MinLife||e.before>MaxLife||e.after<MinLife||e.after>MaxLife||e.source<-1||e.source>=g.config.players||e.slot<0||e.slot>1||e.seconds>g.elapsed||(e.kind!=HistoryKind::Life&&e.kind!=HistoryKind::Poison&&e.kind!=HistoryKind::Monarch&&e.kind!=HistoryKind::Initiative)||(e.turn < -1 || e.turn>9999)||(e.kind==HistoryKind::Poison&&(e.before<0||e.before>MaxCounter||e.after<0||e.after>MaxCounter||e.source!=-1)))return false;
     if(g.active)for(int i=0;i<g.config.players;++i) {
         const auto& lead=g.players[(i/g.config.heads)*g.config.heads];
         if(g.players[i].life!=lead.life || g.players[i].poison!=lead.poison)return false;
@@ -94,11 +94,11 @@ void Model::endGesture() {
         uint32_t seconds=merge?batchSeconds:g.elapsed;
         for(int i=0;i<g.config.players;i+=g.config.heads) if(baseline.players[i].life!=g.players[i].life) {
             if(g.history.size()==256)g.history.erase(g.history.begin());
-            g.history.push_back({i/g.config.heads,actor,baseline.players[i].life,g.players[i].life,damageSource,damageSlot,seconds,HistoryKind::Life,g.turn});
+            g.history.push_back({i/g.config.heads,actor,baseline.players[i].life,g.players[i].life,damageSource,damageSlot,seconds,HistoryKind::Life,g.config.turnEnabled?g.turn:0});
         }
         for(int i=0;i<g.config.players;i+=g.config.heads) if(baseline.players[i].poison!=g.players[i].poison) {
             if(g.history.size()==256)g.history.erase(g.history.begin());
-            g.history.push_back({i/g.config.heads,actor,baseline.players[i].poison,g.players[i].poison,-1,0,seconds,HistoryKind::Poison,g.turn});
+            g.history.push_back({i/g.config.heads,actor,baseline.players[i].poison,g.players[i].poison,-1,0,seconds,HistoryKind::Poison,g.config.turnEnabled?g.turn:0});
         }
         if(!merge){if(past.size()==64)past.erase(past.begin());past.push_back(before);}
         future.clear();
@@ -167,7 +167,20 @@ bool Model::change(int i,Counter kind,int delta,int source,int slot) {
 bool Model::marker(int i,bool initiative) {
     if(!state.game.active || i<0 || i>=state.game.config.players) return false;
     endGesture(); beginGesture(); int& value=initiative?state.game.initiative:state.game.monarch;
-    value=value==i?-1:i; touch(); endGesture(); return true;
+    int previous=value;
+    bool taking=previous!=i;
+    value=taking?i:-1;
+    const int eventTurn=state.game.config.turnEnabled?state.game.turn:0;
+    const HistoryKind kind=initiative?HistoryKind::Initiative:HistoryKind::Monarch;
+    auto append=[&](int player,int before,int after){
+        if(state.game.history.size()>=256)state.game.history.erase(state.game.history.begin());
+        state.game.history.push_back({player/state.game.config.heads,player,before,after,-1,0,state.game.elapsed,kind,eventTurn});
+    };
+    // A transfer records the former holder losing the role before its new
+    // holder takes it.  Both events belong to the same undo/redo gesture.
+    if(previous>=0)append(previous,1,0);
+    if(taking)append(i,0,1);
+    touch(); endGesture();return true;
 }
 bool Model::undo() { endGesture();batchAvailable=false; if(past.empty()) return false;auto current=state.game;future.push_back(current);state.game=past.back();state.game.elapsed=current.elapsed;state.game.config=current.config;state.game.timerRemaining=current.timerRemaining;state.game.timerRunning=current.timerRunning;state.game.timerDeadline=current.timerDeadline;past.pop_back();touch();return true; }
 bool Model::redo() { endGesture();batchAvailable=false; if(future.empty()) return false;auto current=state.game;past.push_back(current);state.game=future.back();state.game.elapsed=current.elapsed;state.game.config=current.config;state.game.timerRemaining=current.timerRemaining;state.game.timerRunning=current.timerRunning;state.game.timerDeadline=current.timerDeadline;future.pop_back();touch();return true; }
@@ -189,11 +202,11 @@ bool Model::assignActive(int seat,int profile) {
     touch();return true;
 }
 bool Model::addProfile(const std::string& name) {
-    auto n=cleanName(name); if(n.empty() || state.profiles.size()>=MaxProfiles) return false;
+    auto n=cleanName(name); if(n.size()>0){size_t at=0;int count=0;while(at<n.size()&&count<8){unsigned char c=n[at];at+=c<128?1:c<224?2:c<240?3:4;++count;}n=n.substr(0,at);while(!n.empty()&&n.back()==' ')n.pop_back();} if(n.empty() || state.profiles.size()>=MaxProfiles) return false;
     state.profiles.push_back({n,(static_cast<int>(state.profiles.size())-NamedProfileStart)%10}); touch(); return true;
 }
 bool Model::renameProfile(int i,const std::string& name) {
-    auto n=cleanName(name); if(n.empty() || i<0 || i>=static_cast<int>(state.profiles.size())) return false;
+    auto n=cleanName(name); if(n.size()>0){size_t at=0;int count=0;while(at<n.size()&&count<8){unsigned char c=n[at];at+=c<128?1:c<224?2:c<240?3:4;++count;}n=n.substr(0,at);while(!n.empty()&&n.back()==' ')n.pop_back();} if(n.empty() || i<0 || i>=static_cast<int>(state.profiles.size())) return false;
     endGesture();state.profiles[i].name=n;refreshProfile(i);touch();return true;
 }
 void Model::refreshProfile(int i){
