@@ -37,6 +37,22 @@ Open [`dist/Lifeloch-v0.10-Demo.html`](dist/Lifeloch-v0.10-Demo.html) in a moder
 
 **Prerequisites:** A system already running custom firmware/homebrew capable of installing CIAs, an SD or microSD card, and a successfully built `lifeloch.cia`. *Modifying a stock console is outside this project's instructions.* The steps are identical for the original and New 3DS models once custom firmware is present.
 
+### Install with FBI using the QR code
+
+[![QR code for the Lifeloch v0.10.10 CIA download](assets/Lifeloch-v0.10.10-install-qr.png)](https://github.com/Axis-Of-Revolution/lifeloch/raw/refs/heads/main/dist/Lifeloch-v0.10.10.cia)
+
+> **Download access:** This repository is currently private. FBI cannot use your browser's GitHub login, so this QR link cannot install the CIA while the repository remains private. Use the SD-card method below for now. QR installation requires the linked CIA to be downloadable without signing in.
+
+When the download is publicly accessible:
+
+1. Connect the modded 3DS to the internet and open **FBI**.
+2. Select **Remote Install → Scan QR Code**, then scan the code above from your computer or phone screen.
+3. Confirm the installation prompts. When installation finishes, return to HOME Menu and launch **Lifeloch**.
+
+[Direct CIA download](https://github.com/Axis-Of-Revolution/lifeloch/raw/refs/heads/main/dist/Lifeloch-v0.10.10.cia). The QR code encodes this exact URL. Installation on physical hardware remains untested.
+
+### Install from the SD/microSD card
+
 1. Download [`dist/Lifeloch-v0.10.10.cia`](dist/Lifeloch-v0.10.10.cia) using GitHub’s **Download raw file** control, or build it below. Verify its SHA-256 against [`SHA256SUMS.txt`](SHA256SUMS.txt).
 2. Copy the downloaded `.cia` to a convenient folder on the console's SD/microSD card.
 3. Reinsert the card, open the homebrew **FBI** title manager on the console, browse to the CIA and select **Install and delete CIA** (or **Install CIA** to retain the installer).
