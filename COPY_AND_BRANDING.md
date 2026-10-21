@@ -29,4 +29,4 @@ The supplied artwork appears behind the home title and supplies the HOME icon an
 
 `tools/make_assets.py` prepares the full 400×240 home asset, 48×48 and 24×24 HOME icons, 256×128 banner, and native RGB565 pixels. Native labels are in `source/ui.cpp`; demo labels are in `tools/demo-v10.html`. Rebuild the self-contained demo with `sh tools/build_demo.sh`.
 
-No CIA has been compiled in this environment; the final native build still requires the 3DS SDK and hardware verification.
+The v0.10.10 CIA has been compiled with devkitPro and packaged with the supplied icon and banner. See `BUILDING.md` for build details; physical hardware verification is still outstanding.

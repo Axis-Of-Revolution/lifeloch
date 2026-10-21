@@ -2,6 +2,14 @@
 
 This file preserves the chronological design/implementation notes originally kept in README.md. Some entries describe superseded approaches; **the most recent entries and current code take precedence**. No earlier features are reinstated solely because they appear here.
 
+## v0.10.10 native CIA build — 2026-10-20
+
+- Compiled GitHub source `d3cbf0ecc90c45cab9dac58ada06cb158dc13412` with devkitPro/devkitARM GCC 16.1.0, libctru 2.7.0, citro2d 1.7.0 and citro3d 1.7.1; published `dist/Lifeloch-v0.10.10.cia` with SHA-256 provenance. App source and demo behavior are unchanged.
+- Set packed CIA version to 170 (`0.10.10`), made `make clean` remove the generated banner, and allowed versioned distribution CIAs in Git.
+- Documented and included a makerom v0.19.0 build patch: tool-version macros collided with title-version array indices and discarded the requested minor version. The final package reports the correct version; content, ExHeader and ExeFS hashes pass.
+- Corrected stale keyboard regression expectations to the current eight-character profile-name limit. All host, v10, v3/v4, keyboard adapter and demo regression suites pass.
+- Updated installation, build, release and contributor documentation. This is a compiled homebrew package for custom firmware; installation, performance and runtime behavior remain untested on physical hardware.
+
 ## v0.10.10 input stability, animation continuity and documentation
 
 - Separated documentation into an installation/use-focused `README.md`, full historical `CHANGELOG.md`, and architecture/editing guide `LLM-CONTEXT.md`. Added code comments around history gestures, save format changes and input state.

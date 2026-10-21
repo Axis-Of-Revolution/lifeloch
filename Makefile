@@ -8,7 +8,8 @@ TARGET := lifeloch
 BUILD := build
 SOURCES := source
 INCLUDES := include
-CIA_VERSION ?= 160
+# 0.10.10: (major << 10) | (minor << 4) | micro
+CIA_VERSION ?= 170
 APP_TITLE := Lifeloch
 APP_DESCRIPTION := A Magic: The Gathering Game Tracker
 APP_AUTHOR := Lifeloch
@@ -44,7 +45,7 @@ test:
 	g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -Iinclude source/dice.cpp source/model.cpp source/storage.cpp source/ui.cpp source/pixel.cpp source/layout.cpp source/theme.cpp source/audio.cpp tests/test.cpp -o build-host/tests
 	./build-host/tests
 clean:
-	rm -rf build $(TARGET).elf $(TARGET).3dsx $(TARGET).smdh $(TARGET).cia
+	rm -rf build $(TARGET).elf $(TARGET).3dsx $(TARGET).smdh $(TARGET).cia assets/banner.bnr
 else
 $(OUTPUT).3dsx: $(OUTPUT).elf $(OUTPUT).smdh
 $(OUTPUT).elf: $(OFILES)

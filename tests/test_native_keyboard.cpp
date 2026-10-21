@@ -43,8 +43,9 @@ int main(){
     app.dispatch({Action::Life});answer(app,"20",true,3,SWKBD_BUTTON_LEFT);assert(app.model.state.setup.life==999);
     app.dispatch({Action::Life});answer(app,"20",true,3,SWKBD_BUTTON_NONE);assert(app.model.state.setup.life==999);
     app.dispatch({Action::NewProfile});answer(app,"Zo\xc3\xab");assert(app.model.state.profiles.back().name=="Zo\xc3\xab");
-    app.dispatch({Action::RenameProfile});assert(app.input.initial=="Zo\xc3\xab");answer(app,"1234567890123456");assert(app.model.state.profiles.back().name=="1234567890123456");
-    app.dispatch({Action::RenameProfile});answer(app,"Cancelled",false,16,SWKBD_BUTTON_LEFT);assert(app.model.state.profiles.back().name=="1234567890123456");
+    // The keyboard accepts 16 characters; Model enforces the current eight-character profile limit.
+    app.dispatch({Action::RenameProfile});assert(app.input.initial=="Zo\xc3\xab");answer(app,"1234567890123456");assert(app.model.state.profiles.back().name=="12345678");
+    app.dispatch({Action::RenameProfile});answer(app,"Cancelled",false,16,SWKBD_BUTTON_LEFT);assert(app.model.state.profiles.back().name=="12345678");
     app.dispatch({Action::SavePreset});answer(app,"Friday Commander");assert(app.model.state.presets.back().name=="Friday Commander");
     app.dispatch({Action::Options});app.dispatch({Action::TimerInput});assert(app.input.initial=="50");answer(app,"25",true,3);assert(app.model.state.setup.timerSeconds==1500);
     app.dispatch({Action::TimerInput});answer(app,"0",true,3);assert(app.model.state.setup.timerSeconds==1500);

@@ -29,7 +29,7 @@
 | `tools/dice-tray.js`, `tools/dice-physics.js`, `tools/hit-audio.js` | Modular source snippets/resources consumed by the demo build; inspect before changing embedded counterparts |
 | `assets/home-source.jpg`, `tools/make_assets.py`, `include/home_art.hpp` | Supplied home source art, deterministic pixelation/tooling and native baked art pixels |
 | `tests/`, `tools/test_*.sh`, `tools/test_v10_demo.cjs` | Host/native-state tests, save regression, browser-DOM logic and layout tests |
-| `Makefile`, `assets/application.rsf` | devkitARM build and CIA metadata (not hardware verified) |
+| `Makefile`, `assets/application.rsf`, `BUILDING.md` | devkitARM build, CIA metadata and verified build procedure (not hardware verified) |
 
 ## Event pipeline and invariants
 
@@ -47,12 +47,13 @@ Native binary serialization uses explicit version gates. For schema changes, upd
 2. Change the native and HTML implementations in tandem; keep `tools/demo-v10.html` byte-identical to `dist/Lifeloch-v0.10-Demo.html`.
 3. Run `sh tools/test_host.sh`, `sh tools/test_v10.sh`, `sh tools/test_v3.sh`, `sh tools/test_v4.sh`, `node tools/test_v10_demo.cjs`; optional visual snapshots via `npm run test:render`. Use optional `python tools/test_chromium_smoke.py` with Python Playwright/Chromium to verify **real mouse clicks** while the theme animates and drag speed without position jumps.
 4. Visually check at least 2, 4, 6 default and 6 side-sections panels, both screens, and history scrolling. Run `make`/`make cia` with devkitPro when available; do **not** claim native compilation or hardware validation based on host tests.
-5. Update version strings, `CHANGELOG.md`, `BUILD_STATUS.txt`, and `RELEASE_INSTRUCTIONS.txt`; regenerate the source ZIP with `tools/package_v10.py`. Release files must contain the two documentation files and omit old CIA artifacts.
+5. Update version strings, `CHANGELOG.md`, `BUILD_STATUS.txt`, and `RELEASE_INSTRUCTIONS.txt`; regenerate the source ZIP with `tools/package_v10.py`. Source/demo ZIPs remain source-only. Keep the current versioned CIA in `dist/`, regenerate `SHA256SUMS.txt` after updates, and follow `BUILDING.md` for package verification; never include stale binaries.
 6. If authorized to publish, create a single GitHub commit (branch `main` currently used), verify its head and the exact published file contents. Never report a successful publication from a local commit alone.
 
 ## Known limits and deliberate choices
 
-- CIA is not yet built or exercised on physical original/New 3DS hardware. Validate sound, touch, GPU load, SD save safety and suspend/resume before calling it production-ready.
+- v0.10.10 CIA is compiled with devkitPro and its package hashes/title version are checked; physical original/New 3DS hardware is still untested. Validate sound, touch, GPU load, SD save safety and suspend/resume before calling it production-ready.
+- makerom v0.19.0 needs the supplied version-index patch; see `BUILDING.md`. The profile keyboard adapter test must expect Model’s eight-character name limit, even though the OS keyboard permits 16.
 - User explicitly chose **not** to extend new-game confirmation to nonhistorical progress or log every counter change.
 - User specifically rejected old draft visuals, extra headings, unapproved history copy, excessive name enlargement and nonpixelated flames. Treat approved current demo as the authoritative style.
 - Documentation is a map, not an implementation source. When it conflicts with code, inspect tests and ask or use the latest explicit user instruction.

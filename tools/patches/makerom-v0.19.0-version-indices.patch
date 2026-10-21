@@ -1,0 +1,14 @@
+--- a/src/version.h
++++ b/src/version.h
+@@ -4,3 +4,3 @@
+-#define VER_MAJOR	0
+-#define VER_MINOR	19
+-#define VER_PATCH	0
++#define MAKEROM_VERSION_MAJOR	0
++#define MAKEROM_VERSION_MINOR	19
++#define MAKEROM_VERSION_PATCH	0
+--- a/src/user_settings.c
++++ b/src/user_settings.c
+@@ -936 +936 @@
+-	printf("%s v%d.%d.%d (C) %s\n", APP_NAME, VER_MAJOR, VER_MINOR, VER_PATCH, AUTHORS);
++	printf("%s v%d.%d.%d (C) %s\n", APP_NAME, MAKEROM_VERSION_MAJOR, MAKEROM_VERSION_MINOR, MAKEROM_VERSION_PATCH, AUTHORS);

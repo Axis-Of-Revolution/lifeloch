@@ -2,7 +2,7 @@
 
 **Lifeloch** is a two-screen Magic: The Gathering table companion for the Nintendo 3DS family, including New Nintendo 3DS and New Nintendo 3DS XL. It has a native C++ application and a separately implemented, offline HTML demo. The demo is for design and interaction review; it is **not** an emulator or a packaged 3DS application.
 
-> **Build status:** Source and browser demo are supplied. A working `.cia` has **not yet been built or validated on hardware**. The installation steps below apply once you have compiled a CIA using the supported 3DS development toolchain.
+> **Build status:** v0.10.10 has been compiled with devkitPro and packaged as [`dist/Lifeloch-v0.10.10.cia`](dist/Lifeloch-v0.10.10.cia). Package structure, title version and content hashes have been checked. **Installation and runtime behavior have not yet been tested on physical 3DS hardware.** See [BUILDING.md](BUILDING.md) for the toolchain and validation record.
 
 ## What it does
 
@@ -37,8 +37,8 @@ Open [`dist/Lifeloch-v0.10-Demo.html`](dist/Lifeloch-v0.10-Demo.html) in a moder
 
 **Prerequisites:** A system already running custom firmware/homebrew capable of installing CIAs, an SD or microSD card, and a successfully built `lifeloch.cia`. *Modifying a stock console is outside this project's instructions.* The steps are identical for the original and New 3DS models once custom firmware is present.
 
-1. On your computer, build the CIA (below) or obtain a trusted compiled release when one becomes available. **This repository currently provides no verified CIA download.**
-2. Copy `lifeloch.cia` to a convenient folder on the console's SD/microSD card.
+1. Download [`dist/Lifeloch-v0.10.10.cia`](dist/Lifeloch-v0.10.10.cia) using GitHub’s **Download raw file** control, or build it below. Verify its SHA-256 against [`SHA256SUMS.txt`](SHA256SUMS.txt).
+2. Copy the downloaded `.cia` to a convenient folder on the console's SD/microSD card.
 3. Reinsert the card, open the homebrew **FBI** title manager on the console, browse to the CIA and select **Install and delete CIA** (or **Install CIA** to retain the installer).
 4. Return to HOME Menu and launch Lifeloch. Let the app create its save folder at `sdmc:/3ds/command-deck/`. **Do not delete this folder when updating the app**: the old directory name is deliberately retained for save compatibility.
 
@@ -46,17 +46,17 @@ The repository also defines a `.3dsx` build for users who prefer Homebrew Launch
 
 ## Build from source
 
-Install the **devkitPro Nintendo 3DS toolchain** (devkitARM, libctru, citro2d/citro3d), plus `makerom` and `bannertool`. Set the standard `DEVKITPRO` and `DEVKITARM` environment variables. From the project root:
+Install the **devkitPro Nintendo 3DS toolchain** (devkitARM, libctru, citro2d/citro3d), plus `makerom` and `bannertool`. Set `DEVKITPRO` and `DEVKITARM`, and add the SDK and packaging tools to `PATH`. **Use the makerom v0.19.0 patch and detailed setup in [BUILDING.md](BUILDING.md)**; the unpatched release writes an incorrect minor version.
 
 ```sh
-make           # compile the native .elf / .3dsx and metadata
-make cia       # compile/banner/package lifeloch.cia
+make clean
+make -j2 cia    # creates lifeloch.elf, lifeloch.3dsx, lifeloch.smdh and lifeloch.cia
 ```
 
-The Makefile uses `assets/application.rsf`, `assets/icon.png`, `assets/banner.png` and `assets/silence.wav`. The absence of 3DS toolchain dependencies is a **build blocker**, not a claim that compilation succeeded. Native build performance and CIA installation have not been tested here.
+`make` alone builds the ELF/3DSX. The CIA includes `assets/application.rsf`, the supplied icon/banner and silent banner audio. The title ID remains `000400000F5D3100`; CIA version `170` encodes `0.10.10`. Generated root outputs are ignored; the explicitly versioned CIA in `dist/` is committed. Hardware validation remains outstanding.
 
 ## Tests and repository guide
 
-Run the host regressions with `sh tools/test_host.sh`, `sh tools/test_v10.sh`, `sh tools/test_v3.sh`, `sh tools/test_v4.sh`, and `node tools/test_v10_demo.cjs`. Optional screenshot tests use `npm run test:render` (requires `sharp`). A real-browser click/slider smoke test is `python tools/test_chromium_smoke.py` (requires Python Playwright and Chromium). See **[LLM-CONTEXT.md](LLM-CONTEXT.md)** for architecture and safe editing practices, **[CHANGELOG.md](CHANGELOG.md)** for release history, and **[COPY_AND_BRANDING.md](COPY_AND_BRANDING.md)** for branding and artwork permissions.
+Run the host regressions with `sh tools/test_host.sh`, `sh tools/test_v10.sh`, `sh tools/test_v3.sh`, `sh tools/test_v4.sh`, and `node tools/test_v10_demo.cjs`. With `DEVKITPRO` set, also run `sh tools/test_native_keyboard.sh`. Optional screenshot tests use `npm run test:render` (requires `sharp`). A real-browser click/slider smoke test is `python tools/test_chromium_smoke.py` (requires Python Playwright and Chromium). See **[LLM-CONTEXT.md](LLM-CONTEXT.md)** for architecture and safe editing practices, **[CHANGELOG.md](CHANGELOG.md)** for release history, and **[COPY_AND_BRANDING.md](COPY_AND_BRANDING.md)** for branding and artwork permissions.
 
 The software license does not grant ownership of external/supplied art. The supplied original is `assets/home-source.jpg`; its pixelation and wave are algorithmic, not generative.

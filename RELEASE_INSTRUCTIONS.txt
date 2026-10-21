@@ -1,11 +1,17 @@
 Lifeloch v0.10.10
 
-Run dist/Lifeloch-v0.10-Demo.html in a browser (no server needed).
-README.md: quick start, features, installation and build requirements.
-CHANGELOG.md: detailed release/design history.
-LLM-CONTEXT.md: architecture map and editing/test checklist.
+CIA: dist/Lifeloch-v0.10.10.cia (devkitPro build; hardware testing pending).
+Download the raw binary from GitHub, check SHA256SUMS.txt, copy it to the
+SD/microSD card of an already modded 3DS, and install with FBI.
+Keep sdmc:/3ds/command-deck/ intact when updating to preserve saves.
+
+Demo: dist/Lifeloch-v0.10-Demo.html (open directly in a modern browser).
+README.md: quick start, features and installation.
+BUILDING.md: exact tools, makerom patch, rebuild commands and validation.
+BUILD_STATUS.txt: artifact checksum and remaining hardware checks.
+CHANGELOG.md: release/design history.
+LLM-CONTEXT.md: architecture and editing/test checklist.
 COPY_AND_BRANDING.md: terminology and artwork permissions.
 
-This source archive contains the browser demo, source and tests, but no CIA.
-A native build requires the devkitPro 3DS toolchain plus makerom and bannertool.
-The resulting CIA has NOT yet been tested on physical hardware.
+The source/demo ZIP produced by tools/package_v10.py remains source-only;
+obtain the compiled CIA separately from the repository's dist directory.

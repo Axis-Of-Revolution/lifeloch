@@ -6,6 +6,8 @@ qa/
 *.elf
 *.3dsx
 *.cia
+!dist/Lifeloch-v*.cia
+assets/banner.bnr
 *.smdh
 *.3ds
 *.map
